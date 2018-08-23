@@ -8,7 +8,7 @@ https://qiita.com/numa08/items/b676e38e3dbabfd39d18
 
 - このリポジトリの`master`ブランチをローカルにクローンします
 ```
-git clone xxxx
+git clone https://github.com/harmony-plus/7ZipArchiveDsc.git
 ```
 
 - 作業用にトピックブランチ`dev`を切ります
