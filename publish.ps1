@@ -1,4 +1,4 @@
-Param(
+Param (
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
     [string]$NugetApiKey,
@@ -32,7 +32,7 @@ if ($ExcludeFiles -notcontains $MySelfName) {
 }
 
 try {
-    robocopy $ModuleDir $Destination /MIR /XD ($ExcludeDirs -join ' ') /XF ($ExcludeFiles -join ' ') > $null
+    robocopy $ModuleDir $Destination /MIR /XD $ExcludeDirs /XF $ExcludeFiles /NP > $null
 
     Set-Location $Destination
     Publish-Module -Path ./ -NuGetApiKey $NugetApiKey -Verbose -WhatIf:$WhatIf
