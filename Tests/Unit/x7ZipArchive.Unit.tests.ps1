@@ -4,12 +4,12 @@ $newestPesterVersion = [System.Version]((Get-Module Pester -ListAvailable).Versi
 if ($newestPesterVersion -lt '4.2.0') { throw "Pester 4.2.0 or higher is required." }
 
 $script:moduleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-Import-Module (Join-Path $script:moduleRoot '\DSCResources\7ZipArchive\7ZipArchive.psm1') -Force
+Import-Module (Join-Path $script:moduleRoot '\DSCResources\x7ZipArchive\x7ZipArchive.psm1') -Force
 $global:TestData = Join-Path (Split-Path -Parent $PSScriptRoot) '\TestData'
 #endregion HEADER
 
 #region Begin Testing
-InModuleScope '7ZipArchive' {
+InModuleScope 'x7ZipArchive' {
     #region Set variables for testing
     $script:TestGuid = [Guid]::NewGuid()
     $testUsername = 'TestUsername'
@@ -20,7 +20,7 @@ InModuleScope '7ZipArchive' {
 
 
     #region Tests for Get-TargetResource
-    Describe '7ZipArchive/Get-TargetResource' -Tag 'Unit' {
+    Describe 'x7ZipArchive/Get-TargetResource' -Tag 'Unit' {
 
         BeforeAll {
             Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
@@ -43,7 +43,7 @@ InModuleScope '7ZipArchive' {
             It '指定されたアーカイブパスが存在するが、ファイルではなくフォルダの場合は例外発生' {
                 $PathOfFolder = "TestDrive:\$script:TestGuid\Folder"
                 $PathOfDestination = "TestDrive:\$script:TestGuid\Destination"
-                New-Item -Path $PathOfFolder -ItemType Container >$null
+                New-Item -Path $PathOfFolder -ItemType Container -ErrorAction SilentlyContinue >$null
 
                 $getParam = @{
                     Path        = $PathOfFolder
@@ -72,7 +72,7 @@ InModuleScope '7ZipArchive' {
             It 'Test-ArchiveExistsAtDestinationで例外発生した場合は例外発生' {
                 $PathOfFolder = "TestDrive:\$script:TestGuid\Folder"
                 $PathOfDestination = "TestDrive:\$script:TestGuid\Destination"
-                New-Item -Path $PathOfFolder -ItemType Container >$null
+                New-Item -Path $PathOfFolder -ItemType Container -ErrorAction SilentlyContinue >$null
 
                 $getParam = @{
                     Path        = $PathOfFolder
@@ -252,7 +252,7 @@ InModuleScope '7ZipArchive' {
 
 
     #region Tests for Test-TargetResource
-    Describe '7ZipArchive/Test-TargetResource' -Tag 'Unit' {
+    Describe 'x7ZipArchive/Test-TargetResource' -Tag 'Unit' {
 
         Context 'Get-TargetResourceの返すHashTableのEnsureプロパティがPresentの場合' {
 
@@ -291,7 +291,7 @@ InModuleScope '7ZipArchive' {
 
 
     #region Tests for Set-TargetResource
-    Describe '7ZipArchive/Set-TargetResource' -Tag 'Unit' {
+    Describe 'x7ZipArchive/Set-TargetResource' -Tag 'Unit' {
 
         Mock Expand-7ZipArchive -MockWith {} -ParameterFilter {$IgnoreRoot}
         Mock Expand-7ZipArchive -MockWith {} -ParameterFilter {$Force -eq $false}
@@ -415,7 +415,7 @@ InModuleScope '7ZipArchive' {
 
 
     #region Tests for Mount-PSDriveWithCredential
-    Describe '7ZipArchive/Mount-PSDriveWithCredential' -Tag 'Unit' {
+    Describe 'x7ZipArchive/Mount-PSDriveWithCredential' -Tag 'Unit' {
 
         Mock New-PSDrive {}
 
@@ -445,7 +445,7 @@ InModuleScope '7ZipArchive' {
 
 
     #region Tests for Get-7ZipArchiveFileList
-    Describe '7ZipArchive/Get-7ZipArchiveFileList' -Tag 'Unit' {
+    Describe 'x7ZipArchive/Get-7ZipArchiveFileList' -Tag 'Unit' {
 
         BeforeAll {
             Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
@@ -581,7 +581,7 @@ InModuleScope '7ZipArchive' {
 
 
     #region Tests for Test-ArchiveExistsAtDestination
-    Describe '7ZipArchive/Test-ArchiveExistsAtDestination' -Tag 'Unit' {
+    Describe 'x7ZipArchive/Test-ArchiveExistsAtDestination' -Tag 'Unit' {
 
         Context 'エラーパターン' {
 
@@ -821,7 +821,7 @@ InModuleScope '7ZipArchive' {
 
 
     #region Tests for Expand-7ZipArchive
-    Describe '7ZipArchive/Expand-7ZipArchive' -Tag 'Unit' {
+    Describe 'x7ZipArchive/Expand-7ZipArchive' -Tag 'Unit' {
 
         BeforeAll {
             Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
