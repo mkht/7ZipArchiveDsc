@@ -17,6 +17,8 @@ try {
     #region Integration Tests
     $script:TestGuid = [Guid]::NewGuid()
 
+    $script:ShowDscVerboseMsg = $false
+
     $ConfigurationData = @{
         AllNodes = @(
             @{
@@ -59,7 +61,7 @@ try {
                         Path         = $TestDrive
                         ComputerName = 'localhost'
                         Wait         = $true
-                        Verbose      = $true
+                        Verbose      = $script:ShowDscVerboseMsg
                         Force        = $true
                         ErrorAction  = 'Stop'
                     }
@@ -70,7 +72,7 @@ try {
 
             It 'Should be able to call Get-DscConfiguration without throwing' {
                 {
-                    $script:currentConfiguration = Get-DscConfiguration -Verbose -ErrorAction Stop
+                    $script:currentConfiguration = Get-DscConfiguration -Verbose:$script:ShowDscVerboseMsg -ErrorAction Stop
                 } | Should -Not -Throw
             }
 
@@ -86,7 +88,7 @@ try {
             }
 
             It 'Should return $true when Test-DscConfiguration is run' {
-                Test-DscConfiguration -Verbose | Should -Be $true
+                Test-DscConfiguration -Verbose:$script:ShowDscVerboseMsg | Should -Be $true
             }
 
             It 'Should be expanded archive to destination' {
@@ -124,7 +126,7 @@ try {
                         Path         = $TestDrive
                         ComputerName = 'localhost'
                         Wait         = $true
-                        Verbose      = $true
+                        Verbose      = $script:ShowDscVerboseMsg
                         Force        = $true
                         ErrorAction  = 'Stop'
                     }
@@ -135,7 +137,7 @@ try {
 
             It 'Should be able to call Get-DscConfiguration without throwing' {
                 {
-                    $script:currentConfiguration = Get-DscConfiguration -Verbose -ErrorAction Stop
+                    $script:currentConfiguration = Get-DscConfiguration -Verbose:$script:ShowDscVerboseMsg -ErrorAction Stop
                 } | Should -Not -Throw
             }
 
@@ -151,7 +153,7 @@ try {
             }
 
             It 'Should return $true when Test-DscConfiguration is run' {
-                Test-DscConfiguration -Verbose | Should -Be $true
+                Test-DscConfiguration -Verbose:$script:ShowDscVerboseMsg | Should -Be $true
             }
 
             It 'Should be expanded archive to destination' {
@@ -197,7 +199,7 @@ try {
                         Path         = $TestDrive
                         ComputerName = 'localhost'
                         Wait         = $true
-                        Verbose      = $true
+                        Verbose      = $script:ShowDscVerboseMsg
                         Force        = $true
                         ErrorAction  = 'Stop'
                     }
@@ -208,7 +210,7 @@ try {
 
             It 'Should be able to call Get-DscConfiguration without throwing' {
                 {
-                    $script:currentConfiguration = Get-DscConfiguration -Verbose -ErrorAction Stop
+                    $script:currentConfiguration = Get-DscConfiguration -Verbose:$script:ShowDscVerboseMsg -ErrorAction Stop
                 } | Should -Not -Throw
             }
 
@@ -224,7 +226,7 @@ try {
             }
 
             It 'Should return $true when Test-DscConfiguration is run' {
-                Test-DscConfiguration -Verbose | Should -Be $true
+                Test-DscConfiguration -Verbose:$script:ShowDscVerboseMsg | Should -Be $true
             }
 
             It 'Should be expanded archive to destination' {
@@ -269,7 +271,7 @@ try {
                         Path         = $TestDrive
                         ComputerName = 'localhost'
                         Wait         = $true
-                        Verbose      = $true
+                        Verbose      = $script:ShowDscVerboseMsg
                         Force        = $true
                         ErrorAction  = 'Stop'
                     }
@@ -280,7 +282,7 @@ try {
 
             It 'Should be able to call Get-DscConfiguration without throwing' {
                 {
-                    $script:currentConfiguration = Get-DscConfiguration -Verbose -ErrorAction Stop
+                    $script:currentConfiguration = Get-DscConfiguration -Verbose:$script:ShowDscVerboseMsg -ErrorAction Stop
                 } | Should -Not -Throw
             }
 
@@ -296,7 +298,7 @@ try {
             }
 
             It 'Should return $true when Test-DscConfiguration is run' {
-                Test-DscConfiguration -Verbose | Should -Be $true
+                Test-DscConfiguration -Verbose:$script:ShowDscVerboseMsg | Should -Be $true
             }
 
             It 'Should be expanded archive to destination' {
@@ -332,7 +334,7 @@ try {
                         Path         = $TestDrive
                         ComputerName = 'localhost'
                         Wait         = $true
-                        Verbose      = $true
+                        Verbose      = $script:ShowDscVerboseMsg
                         Force        = $true
                         ErrorAction  = 'Stop'
                     }
@@ -343,7 +345,7 @@ try {
 
             It 'Should be able to call Get-DscConfiguration without throwing' {
                 {
-                    $script:currentConfiguration = Get-DscConfiguration -Verbose -ErrorAction Stop
+                    $script:currentConfiguration = Get-DscConfiguration -Verbose:$script:ShowDscVerboseMsg -ErrorAction Stop
                 } | Should -Not -Throw
             }
 
@@ -359,7 +361,7 @@ try {
             }
 
             It 'Should return $true when Test-DscConfiguration is run' {
-                Test-DscConfiguration -Verbose | Should -Be $true
+                Test-DscConfiguration -Verbose:$script:ShowDscVerboseMsg | Should -Be $true
             }
 
             It 'Should be expanded archive to destination' {
