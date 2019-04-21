@@ -61,8 +61,12 @@ Invoke-Pester
 
 ----
 ## ライセンス
-7ZipArchiveDscモジュールは7-Zipライブラリを使用しています
+7ZipArchiveDscモジュールは以下の ソフトウェア および ライブラリ を使用しています
 
 + [7-Zip](https://www.7-zip.org/)
     - Copyright (C) Igor Pavlov.
     - Licensed under the **GNU LGPL** and **BSD 3-clause License**.
+
++ [Crc32.NET](https://github.com/force-net/Crc32.NET)
+    - Copyright (c) force
+    - Licensed under the **MIT License**.
