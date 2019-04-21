@@ -554,18 +554,20 @@ function Test-ArchiveExistsAtDestination {
             $Archive = [Archive]::new($Path)
         }
         catch {
-            Write-Error $_.Exception
+            Write-Error -Exception $_.Exception
         }
     }
 
     if (-not (Test-Path -LiteralPath $Destination -PathType Container)) {
         #Destination folder is not exist
+        Write-Verbose 'The destination folder is not exist'
         return $false
     }
 
     $ExistItems = Get-ChildItem -LiteralPath $Destination -Recurse -Force
     if (0 -eq @($ExistItems).Length) {
         #Destination folder is empty
+        Write-Verbose 'The destination folder is empty'
         return $false
     }
 
