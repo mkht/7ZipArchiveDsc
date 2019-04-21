@@ -65,8 +65,9 @@ Invoke-Pester
 
 + [7-Zip](https://www.7-zip.org/)
     - Copyright (C) Igor Pavlov.
-    - Licensed under the **GNU LGPL** and **BSD 3-clause License**.
+    - Licensed under the **GNU LGPL** and **BSD 3-clause License**.  
+      https://www.7-zip.org/license.txt
 
 + [Crc32.NET](https://github.com/force-net/Crc32.NET)
     - Copyright (c) force
-    - Licensed under the **MIT License**.
+    - Licensed under the **[MIT License](https://github.com/force-net/Crc32.NET/blob/v1.2.0/LICENSE)**.
