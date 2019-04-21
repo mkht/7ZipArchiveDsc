@@ -543,9 +543,9 @@ function Test-ArchiveExistsAtDestination {
     2. Destinationが存在しないor空フォルダの場合はFalseを返す
     3. アーカイブ内のファイル/フォルダ全てがDestination内に存在するか確認
         3-1. Checksumが指定されていない場合はファイル/フォルダ名が一致していればOKとする
-        3-2. ChecksumにModifiedDateが指定された場合は4-1に加えてファイルの更新日時が一致しているか確認
-        3-3. ChecksumにSizeが指定された場合は4-1に加えてファイルサイズが一致しているか確認
-        3-3. ChecksumにCRC32が指定された場合は4-1に加えてCRC32ハッシュが一致しているか確認
+        3-2. ChecksumにModifiedDateが指定された場合は3-1に加えてファイルの更新日時が一致しているか確認
+        3-3. ChecksumにSizeが指定された場合は3-1に加えてファイルサイズが一致しているか確認
+        3-3. ChecksumにCRC32が指定された場合は3-1に加えてCRC32ハッシュが一致しているか確認
     4. アーカイブ内のファイル/フォルダ全てがDestination内に存在していればTrueを、一つでも存在しないファイルがあればFalseを返す
     #>
 
