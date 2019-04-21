@@ -1,4 +1,4 @@
-#Requires -Version 5
+﻿#Requires -Version 5
 
 $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
 $script:Crc32NET = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\Crc32.NET\Crc32.NET.dll'
@@ -433,6 +433,8 @@ function Mount-PSDriveWithCredential {
     2. New-PSDriveコマンドレットを使用してパスを資格情報指定でマウントする
     #>
 
+
+
 }
 
 
@@ -511,10 +513,15 @@ function Test-ArchiveExistsAtDestination {
     [OutputType([bool])]
     param
     (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, ParameterSetName = 'Path')]
         [ValidateNotNullOrEmpty()]
         [string]
         $Path,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'Class')]
+        [ValidateNotNullOrEmpty()]
+        [Archive]
+        $Archive,
 
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -530,22 +537,83 @@ function Test-ArchiveExistsAtDestination {
         [string]
         $Checksum
     )
-
-    #TODO: Implement
-
     <#
-    ### 想定する処理の流れ
+    ### 処理の流れ
     1. $Pathが正しいか確認（ファイルが存在するか、正しいアーカイブか）
     2. Destinationが存在しないor空フォルダの場合はFalseを返す
-    3. Get-7ZipArchiveFileListを呼び出してアーカイブ内のファイルリストを取得
-    4. アーカイブ内のファイル/フォルダ全てがDestination内に存在するか確認
-        4-1. Checksumが指定されていない場合はファイル/フォルダ名が一致していればOKとする
-        4-2. ChecksumにModifiedDateが指定された場合は4-1に加えてファイルの更新日時が一致しているか確認
-        4-3. ChecksumにSizeが指定された場合は4-1に加えてファイルサイズが一致しているか確認
-        4-3. ChecksumにCRC32が指定された場合は4-1に加えてCRC32ハッシュが一致しているか確認
-    5. アーカイブ内のファイル/フォルダ全てがDestination内に存在していればTrueを、一つでも存在しないファイルがあればFalseを返す
+    3. アーカイブ内のファイル/フォルダ全てがDestination内に存在するか確認
+        3-1. Checksumが指定されていない場合はファイル/フォルダ名が一致していればOKとする
+        3-2. ChecksumにModifiedDateが指定された場合は4-1に加えてファイルの更新日時が一致しているか確認
+        3-3. ChecksumにSizeが指定された場合は4-1に加えてファイルサイズが一致しているか確認
+        3-3. ChecksumにCRC32が指定された場合は4-1に加えてCRC32ハッシュが一致しているか確認
+    4. アーカイブ内のファイル/フォルダ全てがDestination内に存在していればTrueを、一つでも存在しないファイルがあればFalseを返す
     #>
 
+    if ($PSCmdlet.ParameterSetName -eq 'Path') {
+        try {
+            $Archive = [Archive]::new($Path)
+        }
+        catch {
+            Write-Error $_.Exception
+        }
+    }
+
+    if (-not (Test-Path -LiteralPath $Destination -PathType Container)) {
+        #Destination folder is not exist
+        return $false
+    }
+
+    $ExistItems = Get-ChildItem -LiteralPath $Destination -Recurse -Force
+    if (0 -eq @($ExistItems).Length) {
+        #Destination folder is empty
+        return $false
+    }
+
+    $fileList = $Archive.GetFileList()
+    foreach ($Item in $fileList) {
+        $AbsolutePath = Join-Path -Path $Destination -ChildPath $Item.Path
+        $tParam = @{
+            LiteralPath = $AbsolutePath
+            PathType    = $(if ($Item.ItemType -eq 'File') { 'Leaf' }else { 'Container' })
+        }
+        if (-not (Test-Path @tParam)) {
+            # Target file not exist => return false
+            Write-Verbose ('The file "{0}" in the archive is not exist in the destination folder' -f $Item.Path)
+            return $false
+        }
+
+        if ($Checksum) {
+            $CurrentFileInfo = Get-Item -LiteralPath $AbsolutePath -Force
+            if ($Checksum -eq 'ModifiedDate') {
+                # Truncate milliseconds
+                [datetime]$s = $CurrentFileInfo.LastWriteTimeUtc
+                $CurrentFileModifiedDate = [datetime]::new($s.Year, $s.Month, $s.Day, $s.Hour, $s.Minute, $s.Second, $s.Kind)
+                # Compare datetime
+                if ($CurrentFileModifiedDate -ne $Item.Modified.ToUniversalTime()) {
+                    Write-Verbose ('The modified date of "{0}" is not same.' -f $Item.Path)
+                    return $false
+                }
+            }
+            elseif ($Checksum -eq 'Size') {
+                # Compare file size
+                if ($CurrentFileInfo.Length -ne $Item.Size) {
+                    Write-Verbose ('The size of "{0}" is not same.' -f $Item.Path)
+                    return $false
+                }
+            }
+            elseif ($Checksum -eq 'CRC32') {
+                # Compare file size
+                $CurrentFileHash = Get-CRC32Hash -Path $CurrentFileInfo.FullName
+                if ($CurrentFileHash -ne $Item.CRC) {
+                    Write-Verbose ('The hash of "{0}" is not same.' -f $Item.Path)
+                    return $false
+                }
+            }
+        }
+    }
+
+    Write-Verbose ('All items in the archive exists in the destination folder')
+    return $true
 }
 
 
