@@ -1,4 +1,186 @@
-﻿function Get-TargetResource {
+﻿#Requires -Version 5
+
+$script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7z.exe'
+
+Enum ExitCode {
+    #https://sevenzip.osdn.jp/chm/cmdline/exit_codes.htm
+    Success = 0
+    Warning = 1
+    FatalError = 2
+    CommandLineError = 7
+    NotEnoughMemory = 8
+    UserStopped = 255
+}
+
+class Archive {
+    [string] $Path
+    [string] $Type
+    [int] $Files = 0
+    [int] $Folders = 0
+    [System.IO.FileInfo] $FileInfo
+    [Object[]] $FileList
+
+    Archive([string]$Path) {
+        $info = [Archive]::TestArchive($Path) |`
+            ForEach-Object { $_.Replace('\', '\\') } |`
+            ForEach-Object { if ($_ -notmatch '=') { $_.Replace(':', ' =') }else { $_ } } |`
+            Where-Object { $_ -match '^.+=.+$' } |`
+            ConvertFrom-StringData
+
+        $this.Path = $Path
+        $this.Type = [string]$info.Type
+        if ([int]::TryParse($info.Files, [ref]$null)) {
+            $this.Files = [int]::Parse($info.Files)
+        }
+        if ([int]::TryParse($info.Folders, [ref]$null)) {
+            $this.Folders = [int]::Parse($info.Folders)
+        }
+        $this.FileInfo = [System.IO.FileInfo]::new($Path)
+        $this.FileList = [Archive]::GetFileList($Path)
+    }
+
+    [Object[]]GetFileList() {
+        return $this.FileList
+    }
+
+    static [string[]]TestArchive([string]$Path) {
+        $NewLine = [System.Environment]::NewLine
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+            throw [System.IO.FileNotFoundException]::new()
+        }
+
+        # Test integrity of archive
+        $msg = & $script:7zExe t $Path -ba
+        if ($LASTEXITCODE -ne [ExitCode]::Success) {
+            throw [System.ArgumentException]::new($msg -join $NewLine)
+        }
+
+        return $msg
+    }
+
+    static [Object[]]GetFileList([string]$Path) {
+        $NewLine = [System.Environment]::NewLine
+        [Archive]::TestArchive($Path) | Write-Debug
+        $ret = & $script:7zExe l $Path -ba -slt
+        if ($LASTEXITCODE -ne [ExitCode]::Success) {
+            throw [System.InvalidOperationException]::new($ret -join $NewLine)
+        }
+        return ($ret -join $NewLine).Replace('\', '\\') -split "$NewLine$NewLine" |`
+            ConvertFrom-StringData |`
+            ForEach-Object {
+            $tmp = $_
+
+            $tmp.Size = [int]$_.Size
+            $tmp.Encrypted = [bool]($_.Encrypted -eq '+')
+
+            if ($_.Modified) {
+                $tmp.Modified = [datetime]$_.Modified
+            }
+
+            if ($_.Created) {
+                $tmp.Created = [datetime]$_.Created
+            }
+
+            if ($_.Accessed) {
+                $tmp.Accessed = [datetime]$_.Accessed
+            }
+
+            if ($_.'Packed Size') {
+                $tmp.'Packed Size' = [int]$_.'Packed Size'
+            }
+
+            if ($_.Folder) {
+                $tmp.Folder = [bool]($_.Folder -eq '+')
+                $tmp.ItemType = if ($tmp.Folder) { 'Folder' }else { 'File' }
+            }
+            else {
+                $tmp.Folder = [bool]($_.Attributes.Contains('D'))
+                $tmp.ItemType = if ($tmp.Folder) { 'Folder' }else { 'File' }
+            }
+
+            if ($_.'Volume Index') {
+                $tmp.'Volume Index' = [int]$_.'Volume Index'
+            }
+
+            if ($_.Offset) {
+                $tmp.Offset = [int]$_.Offset
+            }
+
+            [PSCustomObject]$tmp
+        }
+    }
+
+    [void]Extract([string]$Destination) {
+        $this.Extract($Destination, $false)
+    }
+
+    [void]Extract([string]$Destination, [bool]$IgnoreRoot) {
+        $Guid = [System.Guid]::NewGuid().toString()
+        $FinalDestination = $Destination
+
+        Write-Verbose ('Extracting archive: {0} to {1}' -f $this.Path, $FinalDestination)
+
+        if ($IgnoreRoot) {
+            $rootDir = $this.FileList | Where-Object { $_.Path.Contains('\') } | ForEach-Object { ($_.Path -split '\\')[0] } | Select-Object -First 1
+            [bool]$HasMultipleRoot = $false
+            foreach ($Item in $this.FileList) {
+                if (($Item.ItemType -eq 'Folder') -and ($Item.Path -ceq $rootDir)) {
+                    #Root dir
+                    continue
+                }
+                elseif ($Item.Path.StartsWith(($rootDir + '\'), [System.StringComparison]::Ordinal)) {
+                    # In the root dir
+                    continue
+                }
+                else {
+                    # Out of root dir
+                    $HasMultipleRoot = $true
+                    break
+                }
+            }
+
+            if ($HasMultipleRoot) {
+                throw [System.InvalidOperationException]::new("Archive has multiple items in the root. You can't use IgnoreRoot option.")
+            }
+
+            $Destination = Join-Path $FinalDestination "$Guid\$rootDir"
+        }
+
+        if ($IgnoreRoot) {
+            $ret = & $script:7zExe x $this.Path -ba -o"$Destination" -y -aoa -spe
+        }
+        else {
+            $ret = & $script:7zExe x $this.Path -ba -o"$Destination" -y -aoa
+        }
+
+        $ExitCode = $LASTEXITCODE
+        if ($ExitCode -ne [ExitCode]::Success) {
+            throw [System.InvalidOperationException]::new(('Exit code:{0} ({1})' -f $ExitCode, ([ExitCode]$ExitCode).ToString()))
+        }
+
+        if ($IgnoreRoot) {
+            try {
+                Get-ChildItem -LiteralPath $Destination -Recurse | Move-Item -Destination $FinalDestination -Force -ErrorAction Stop
+            }
+            finally {
+                Remove-Item -LiteralPath (Join-Path $FinalDestination $Guid) -Force -Recurse
+            }
+        }
+
+        Write-Verbose 'Extraction completed successfully.'
+    }
+
+    static [void]Extract([string]$Path, [string]$Destination) {
+        [Archive]::Extract($Path, $Destination, $false)
+    }
+
+    static [void]Extract([string]$Path, [string]$Destination, [bool]$IgnoreRoot) {
+        $archive = [Archive]::new($Path)
+        $archive.Extract($Destination, $IgnoreRoot)
+    }
+}
+
+function Get-TargetResource {
     [CmdletBinding()]
     [OutputType([System.Collections.Hashtable])]
     param
