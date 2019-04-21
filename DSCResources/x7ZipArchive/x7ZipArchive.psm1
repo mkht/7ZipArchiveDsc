@@ -1,6 +1,7 @@
-﻿#Requires -Version 5
+#Requires -Version 5
 
-$script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7z.exe'
+$script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
+$script:Crc32NET = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\Crc32.NET\Crc32.NET.dll'
 
 Enum ExitCode {
     #https://sevenzip.osdn.jp/chm/cmdline/exit_codes.htm
@@ -177,6 +178,55 @@ class Archive {
     static [void]Extract([string]$Path, [string]$Destination, [bool]$IgnoreRoot) {
         $archive = [Archive]::new($Path)
         $archive.Extract($Destination, $IgnoreRoot)
+    }
+}
+
+<#
+.SYNOPSIS
+ファイルのCRC32ハッシュを計算する関数
+
+.PARAMETER Path
+ハッシュを計算するファイルのパスを指定します
+
+.EXAMPLE
+Get-CRC32Hash -Path C:\file.txt
+#>
+function Get-CRC32Hash {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param
+    (
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [string]
+        $Path
+    )
+
+    Begin {
+        if (-not ([System.AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.Location -eq $script:Crc32NET })) {
+            $null = [reflection.assembly]::LoadFrom($script:Crc32NET)
+        }
+    }
+
+    Process {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+            Write-Error -Exception ([System.IO.FileNotFoundException]::new('The file is not exist.'))
+            return
+        }
+
+        $crc32 = [Force.Crc32.Crc32Algorithm]::new()
+        try {
+            [System.IO.FileStream]$stream = [System.IO.File]::OpenRead($Path)
+            [byte[]]$hash = $crc32.ComputeHash($stream)
+            [System.BitConverter]::ToString($hash).Replace('-', [string]::Empty)
+        }
+        catch {
+            Write-Error -Exception $_.Exception
+        }
+        finally {
+            if ($null -ne $stream) {
+                $stream.Dispose()
+            }
+        }
     }
 }
 
