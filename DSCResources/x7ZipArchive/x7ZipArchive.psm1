@@ -521,7 +521,7 @@ function Test-ArchiveExistsAtDestination {
         [string]
         $Path,
 
-        [Parameter(Mandatory = $true, ParameterSetName = 'Class')]
+        [Parameter(Mandatory = $true, DontShow = $true, ParameterSetName = 'Class')]
         [ValidateNotNullOrEmpty()]
         [Archive]
         $Archive,
