@@ -620,7 +620,7 @@ function Test-ArchiveExistsAtDestination {
     4. アーカイブ内のファイル/フォルダ全てがDestination内に存在していればTrueを、一つでも存在しないファイルがあればFalseを返す
     #>
 
-    $FileList = Get-7ZipArchiveFileList -Path $Path
+    $fileList = Get-7ZipArchiveFileList -Path $Path
 
     if (-not (Test-Path -LiteralPath $Destination -PathType Container)) {
         #Destination folder is not exist
