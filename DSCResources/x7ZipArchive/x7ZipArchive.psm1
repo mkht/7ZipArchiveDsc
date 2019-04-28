@@ -300,6 +300,10 @@ function Get-TargetResource {
         $IgnoreRoot = $false,
 
         [Parameter()]
+        [bool]
+        $Clean = $false,
+
+        [Parameter()]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential
@@ -407,6 +411,10 @@ function Test-TargetResource {
         $IgnoreRoot = $false,
 
         [Parameter()]
+        [bool]
+        $Clean = $false,
+
+        [Parameter()]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential
@@ -496,10 +504,6 @@ function Set-TargetResource {
         Destination = $Destination
         IgnoreRoot  = $IgnoreRoot
         Clean       = $Clean
-    }
-
-    if ($Validate) {
-        $testParam.Checksum = $Checksum
     }
 
     try {
