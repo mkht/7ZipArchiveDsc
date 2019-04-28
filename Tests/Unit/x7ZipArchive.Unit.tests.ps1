@@ -290,9 +290,6 @@ InModuleScope 'x7ZipArchive' {
         Mock Expand-7ZipArchive -MockWith { } -ParameterFilter { $Force -eq $false }
         Mock Expand-7ZipArchive -MockWith { }
 
-        Mock New-PSDrive { } -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) }
-        Mock Remove-PSDrive
-
         BeforeAll {
             Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
             $ErrorActionPreference = 'Stop'
@@ -379,18 +376,6 @@ InModuleScope 'x7ZipArchive' {
 
                 { Set-TargetResource @setParam } | Should -Not -Throw
                 Assert-MockCalled -CommandName 'Expand-7ZipArchive' -ParameterFilter { $IgnoreRoot } -Times 1 -Scope It
-            }
-
-            It '展開先フォルダにアーカイブを展開する (Credential指定あり)' {
-                $setParam = @{
-                    Path        = $PathOfArchive
-                    Destination = $PathOfDestination
-                    Credential  = $script:TestCredential
-                }
-
-                { Set-TargetResource @setParam } | Should -Not -Throw
-                Assert-MockCalled -CommandName 'New-PSDrive' -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) } -Times 1 -Exactly -Scope It
-                Assert-MockCalled -CommandName 'Expand-7ZipArchive' -Times 1 -Scope It
             }
         }
     }
@@ -490,11 +475,16 @@ InModuleScope 'x7ZipArchive' {
     #region Tests for Test-ArchiveExistsAtDestination
     Describe 'x7ZipArchive/Test-ArchiveExistsAtDestination' -Tag 'Unit' {
 
+        BeforeAll {
+            Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
+            $ErrorActionPreference = 'Stop'
+        }
+
         Context 'エラーパターン' {
 
             Mock Get-7ZipArchiveFileList -MockWith { throw '7ZipArchiveFileList Exception' }
 
-            It 'Get-7ZipArchiveFileListが例外発生した場合は例外発生' {
+            It 'Get-7ZipArchiveFileListで例外発生した場合は例外発生' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 New-Item $Destination -ItemType Directory -Force >$null
@@ -532,10 +522,11 @@ InModuleScope 'x7ZipArchive' {
             Mock Get-7ZipArchiveFileList -MockWith {
                 @(
                     [PsCustomObject]@{
-                        ItemType     = 'File'
-                        ModifiedDate = [Datetime]::Parse('2018-08-09 00:02:36')
-                        Size         = 3
-                        Name         = '001.txt'
+                        ItemType = 'File'
+                        Modified = [Datetime]::Parse('2018-08-09 00:02:36')
+                        Size     = 3
+                        CRC      = '55B20A4B'
+                        Path     = '001.txt'
                     }
                 )
             } -ParameterFilter { $Path -eq ((Join-Path "TestDrive:\$script:TestGuid" 'SingleFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)) }
@@ -543,27 +534,27 @@ InModuleScope 'x7ZipArchive' {
             Mock Get-7ZipArchiveFileList -MockWith {
                 @(
                     [PsCustomObject]@{
-                        ItemType     = 'File'
-                        ModifiedDate = [Datetime]::Parse('2018-08-09 00:02:36')
-                        Size         = 3
-                        CRC32        = '55B20A4B'
-                        Name         = '001.txt'
+                        ItemType = 'File'
+                        Modified = [Datetime]::Parse('2018-08-09 00:02:36')
+                        Size     = 3
+                        CRC      = '55B20A4B'
+                        Path     = '001.txt'
                     },
 
                     [PsCustomObject]@{
-                        ItemType     = 'Folder'
-                        ModifiedDate = [Datetime]::Parse('2018-08-09 09:21:12')
-                        Size         = 0
-                        CRC32        = ''
-                        Name         = 'Folder'
+                        ItemType = 'Folder'
+                        Modified = [Datetime]::Parse('2018-08-09 09:21:12')
+                        Size     = 0
+                        CRC      = ''
+                        Path     = 'Folder'
                     },
 
                     [PsCustomObject]@{
-                        ItemType     = 'File'
-                        ModifiedDate = [Datetime]::Parse('2018-08-09 10:05:49')
-                        Size         = 10
-                        CRC32        = 'E448FDFB'
-                        Name         = 'Folder\002.txt'
+                        ItemType = 'File'
+                        Modified = [Datetime]::Parse('2018-08-09 10:05:49')
+                        Size     = 10
+                        CRC      = 'E448FDFB'
+                        Path     = 'Folder\002.txt'
                     }
                 )
             } -ParameterFilter { $Path -eq ((Join-Path "TestDrive:\$script:TestGuid" 'MultiFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)) }
@@ -628,15 +619,6 @@ InModuleScope 'x7ZipArchive' {
                     Assert-MockCalled -CommandName 'Get-7ZipArchiveFileList' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
-                }
-
-                It 'IgnoreRootが指定された場合、Get-7ZipArchiveFileListをIgnoreRoot付きで呼び出すこと' {
-                    $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    New-Item $Destination -ItemType Directory -Force >$null
-
-                    { Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination } | Should -Throw 'IgnoreRoot specified'
-                    Assert-MockCalled -CommandName 'Get-7ZipArchiveFileList' -ParameterFilter { $IgnoreRoot } -Times 1 -Scope It
                 }
             }
 
