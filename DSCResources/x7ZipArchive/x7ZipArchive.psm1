@@ -121,7 +121,10 @@ class Archive {
         $Guid = [System.Guid]::NewGuid().toString()
         $FinalDestination = $Destination
 
-        Write-Verbose ('Extracting archive: {0} to {1}' -f $this.Path, $FinalDestination)
+        $activityMessage = ('Extracting archive: {0} to {1}' -f $this.Path, $FinalDestination)
+        $statusMessage = "Extracting..."
+
+        Write-Verbose $activityMessage
 
         # Test the archive has multiple root or not
         if ($IgnoreRoot) {
@@ -151,15 +154,35 @@ class Archive {
         }
 
         if ($IgnoreRoot) {
-            $ret = & $script:7zExe x $this.Path -ba -o"$Destination" -y -aoa -spe
+            & $script:7zExe x $this.Path -ba -o"$Destination" -y -aoa -spe -bsp1 | ForEach-Object -Process {
+                if ($_ -match '(\d+)\%') {
+                    $progress = $Matches.1
+                    if ([int]::TryParse($progress, [ref]$progress)) {
+                        Write-Progress -Activity $activityMessage -Status $statusMessage -PercentComplete $progress -CurrentOperation "$progress % completed."
+                    }
+                }
+            }
         }
         else {
-            $ret = & $script:7zExe x $this.Path -ba -o"$Destination" -y -aoa
+            & $script:7zExe x $this.Path -ba -o"$Destination" -y -aoa -bsp1 | ForEach-Object -Process {
+                if ($_ -match '(\d+)\%') {
+                    $progress = $Matches.1
+                    if ([int]::TryParse($progress, [ref]$progress)) {
+                        Write-Progress -Activity $activityMessage -Status $statusMessage -PercentComplete $progress -CurrentOperation "$progress % completed."
+                    }
+                }
+            }
         }
 
         $ExitCode = $LASTEXITCODE
         if ($ExitCode -ne [ExitCode]::Success) {
+            if (Test-Path -LiteralPath (Join-Path $FinalDestination $Guid)) {
+                Remove-Item -LiteralPath (Join-Path $FinalDestination $Guid) -Force -Recurse -ErrorAction SilentlyContinue
+            }
             throw [System.InvalidOperationException]::new(('Exit code:{0} ({1})' -f $ExitCode, ([ExitCode]$ExitCode).ToString()))
+        }
+        else {
+            Write-Progress -Activity $activityMessage -Status 'Extraction complete.' -Completed
         }
 
         if ($IgnoreRoot) {
