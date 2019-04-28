@@ -605,7 +605,7 @@ InModuleScope 'x7ZipArchive' {
                     $Result | Should -Be $true
                 }
 
-                It '展開先フォルダにアーカイブ内のファイルが全て存在する場合は他に無関係なファイルが存在していたとしてもTrueを返す' {
+                It 'Cleanなしの場合、展開先フォルダにアーカイブ内のファイルが全て存在する場合は他に無関係なファイルが存在していたとしてもTrueを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'MultiFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
@@ -615,6 +615,37 @@ InModuleScope 'x7ZipArchive' {
                     '003' | Out-File (Join-Path $Destination '003.txt')
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination
+
+                    Assert-MockCalled -CommandName 'Get-7ZipArchiveFileList' -Times 1 -Scope It
+                    $Result | Should -BeOfType 'bool'
+                    $Result | Should -Be $true
+                }
+
+                It 'Cleanありの場合、展開先フォルダの既存ファイル数とアーカイブ内のファイル数が一致しないときにFalseを返す' {
+                    $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'MultiFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    New-Item $Destination -ItemType Directory -Force >$null
+                    New-Item (Join-Path $Destination 'Folder') -ItemType Directory -Force >$null
+                    '001' | Out-File (Join-Path $Destination '001.txt')
+                    '002' | Out-File (Join-Path $Destination '\Folder\002.txt')
+                    '003' | Out-File (Join-Path $Destination '003.txt')
+
+                    $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Clean
+
+                    Assert-MockCalled -CommandName 'Get-7ZipArchiveFileList' -Times 1 -Scope It
+                    $Result | Should -BeOfType 'bool'
+                    $Result | Should -Be $false
+                }
+
+                It 'Cleanありの場合、展開先フォルダにアーカイブ内のファイルが全て存在し、他に無関係なファイルが存在しない場合にのみTrueを返す' {
+                    $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'MultiFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    New-Item $Destination -ItemType Directory -Force >$null
+                    New-Item (Join-Path $Destination 'Folder') -ItemType Directory -Force >$null
+                    '001' | Out-File (Join-Path $Destination '001.txt')
+                    '002' | Out-File (Join-Path $Destination '\Folder\002.txt')
+
+                    $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Clean
 
                     Assert-MockCalled -CommandName 'Get-7ZipArchiveFileList' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
@@ -843,7 +874,7 @@ InModuleScope 'x7ZipArchive' {
         }
 
         It 'Pathに指定されたファイルが存在しない場合は例外' {
-            Mock Test-Path { $false } -ParameterFilter {$LiteralPath -eq 'something'}
+            Mock Test-Path { $false } -ParameterFilter { $LiteralPath -eq 'something' }
 
             { Get-CRC32Hash -Path 'something' } | Should -Throw -ExceptionType ([System.IO.FileNotFoundException])
             Assert-MockCalled -CommandName Test-Path -Times 1 -Scope It

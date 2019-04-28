@@ -1,4 +1,4 @@
-#Requires -Version 5
+﻿#Requires -Version 5
 
 $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
 $script:Crc32NET = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\Crc32.NET\Crc32.NET.dll'
@@ -345,6 +345,7 @@ function Get-TargetResource {
         Path        = $Path
         Destination = $Destination
         IgnoreRoot  = $IgnoreRoot
+        Clean       = $Clean
     }
 
     if ($Validate) {
@@ -608,6 +609,10 @@ function Test-ArchiveExistsAtDestination {
         $IgnoreRoot,
 
         [Parameter()]
+        [switch]
+        $Clean,
+
+        [Parameter()]
         [ValidateSet('ModifiedDate', 'Size', 'CRC32')]
         [string]
         $Checksum
@@ -637,6 +642,15 @@ function Test-ArchiveExistsAtDestination {
         #Destination folder is empty
         Write-Verbose 'The destination folder is empty'
         return $false
+    }
+
+    if ($Clean) {
+        $ExistFileCount = @($ExistItems | Where-Object { -not $_.PsIsContainer }).Count
+        $ArchiveFileCount = @($fileList | Where-Object { $_.ItemType -ne 'Folder' }).Count
+        if ($ArchiveFileCount -ne $ExistFileCount) {
+            Write-Verbose 'The number of destination files does not match the number of files in the archive'
+            return $false
+        }
     }
 
     $rootDir = $fileList | Where-Object { $_.Path.Contains('\') } | ForEach-Object { ($_.Path -split '\\')[0] } | Select-Object -First 1
