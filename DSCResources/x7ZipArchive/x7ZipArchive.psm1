@@ -589,15 +589,10 @@ function Test-ArchiveExistsAtDestination {
     [OutputType([bool])]
     param
     (
-        [Parameter(Mandatory = $true, ParameterSetName = 'Path')]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]
         $Path,
-
-        [Parameter(Mandatory = $true, DontShow = $true, ParameterSetName = 'Class')]
-        [ValidateNotNullOrEmpty()]
-        [Archive]
-        $Archive,
 
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -625,15 +620,7 @@ function Test-ArchiveExistsAtDestination {
     4. アーカイブ内のファイル/フォルダ全てがDestination内に存在していればTrueを、一つでも存在しないファイルがあればFalseを返す
     #>
 
-    if ($PSCmdlet.ParameterSetName -eq 'Path') {
-        try {
-            $Archive = [Archive]::new($Path)
-        }
-        catch {
-            Write-Error -Exception $_.Exception
-            return
-        }
-    }
+    $FileList = Get-7ZipArchiveFileList -Path $Path
 
     if (-not (Test-Path -LiteralPath $Destination -PathType Container)) {
         #Destination folder is not exist
@@ -648,9 +635,8 @@ function Test-ArchiveExistsAtDestination {
         return $false
     }
 
-    $fileList = $Archive.GetFileList()
     $rootDir = $fileList | Where-Object { $_.Path.Contains('\') } | ForEach-Object { ($_.Path -split '\\')[0] } | Select-Object -First 1
-    if (-not $rootDir) {
+    if ($IgnoreRoot -and (-not $rootDir)) {
         Write-Error -Exception ([System.InvalidOperationException]::new("Archive has no item or only one file in the root. You can't use IgnoreRoot option."))
         return
     }
