@@ -716,6 +716,7 @@ function Test-ArchiveExistsAtDestination {
                 # Compare datetime
                 if ($CurrentFileModifiedDate -ne $Item.Modified.ToUniversalTime()) {
                     Write-Verbose ('The modified date of "{0}" is not same.' -f $Item.Path)
+                    Write-Verbose ('Exist:{0} / Archive:{1}' -f $CurrentFileModifiedDate, $Item.Modified.ToUniversalTime())
                     return $false
                 }
             }
@@ -724,6 +725,7 @@ function Test-ArchiveExistsAtDestination {
                     # Compare file size
                     if ($CurrentFileInfo.Length -ne $Item.Size) {
                         Write-Verbose ('The size of "{0}" is not same.' -f $Item.Path)
+                        Write-Verbose ('Exist:{0} / Archive:{1}' -f $CurrentFileInfo.Length, $Item.Size)
                         return $false
                     }
                 }
@@ -734,6 +736,7 @@ function Test-ArchiveExistsAtDestination {
                     $CurrentFileHash = Get-CRC32Hash -Path $CurrentFileInfo.FullName
                     if ($CurrentFileHash -ne $Item.CRC) {
                         Write-Verbose ('The hash of "{0}" is not same.' -f $Item.Path)
+                        Write-Verbose ('Exist:{0} / Archive:{1}' -f $CurrentFileHash, $Item.CRC)
                         return $false
                     }
                 }
