@@ -468,56 +468,6 @@ function Set-TargetResource {
 
 <#
 .SYNOPSIS
-共有フォルダなどアクセスするのに別の資格情報が必要なパスをマウントする関数
-
-.PARAMETER Path
-マウントするパスを指定します
-
-.PARAMETER Credential
-使用する資格情報を指定します
-
-.EXAMPLE
-Mount-PSDriveWithCredential -Path '\\server\sharedFolder' -Credential (Get-Credential)
-
-#>
-function Mount-PSDriveWithCredential {
-    [CmdletBinding()]
-    [OutputType([System.Management.Automation.PSDriveInfo])]
-    param
-    (
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [string]
-        $Path,
-
-        [Parameter(Mandatory = $true)]
-        [System.Management.Automation.PSCredential]
-        [System.Management.Automation.Credential()]
-        $Credential
-    )
-
-    #TODO: Implement
-
-    <#
-    ### 想定する処理の流れ
-    1. $Pathにアクセスできるか確認、アクセスできる場合は何も処理せず終了
-    2. New-PSDriveコマンドレットを使用してパスを資格情報指定でマウントする
-    #>
-
-    if (Test-Path -LiteralPath $Path) {
-        return
-    }
-    else {
-        $Guid = [System.Guid]::NewGuid().toString()
-        New-PSDrive -Name $Guid
-    }
-
-
-}
-
-
-<#
-.SYNOPSIS
 アーカイブファイル内のファイルリストを取得する関数
 
 .PARAMETER Path
