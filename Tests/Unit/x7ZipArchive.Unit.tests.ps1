@@ -834,6 +834,29 @@ InModuleScope 'x7ZipArchive' {
     }
     #endregion Tests for Expand-7ZipArchive
 
-}
 
+    #region Tests for Get-CRC32Hash
+    Describe 'x7ZipArchive/Get-CRC32Hash' -Tag 'Unit' {
+
+        BeforeAll {
+            $ErrorActionPreference = 'Stop'
+        }
+
+        It 'Pathに指定されたファイルが存在しない場合は例外' {
+            Mock Test-Path { $false } -ParameterFilter {$LiteralPath -eq 'something'}
+
+            { Get-CRC32Hash -Path 'something' } | Should -Throw -ExceptionType ([System.IO.FileNotFoundException])
+            Assert-MockCalled -CommandName Test-Path -Times 1 -Scope It
+        }
+
+        It 'ファイルのCRC32を返却' {
+            $TestFile = Join-Path $TestDrive 'test.txt'
+            '001' | Out-File -FilePath $TestFile -Encoding ascii -NoNewline -Force
+
+            Get-CRC32Hash -Path $TestFile | Should -Be '55B20A4B'
+        }
+    }
+    #endregion Tests for Get-CRC32Hash
+
+}
 #endregion End Testing
