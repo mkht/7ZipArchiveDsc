@@ -524,40 +524,37 @@ function Mount-PSDriveWithCredential {
 アーカイブファイルのパスを指定します
 アーカイブは7Zipで扱える形式である必要があります
 
-.PARAMETER IgnoreRoot
-IgnoreRootが指定された場合、アーカイブ内のルートフォルダを除外し、その中のファイルをリストアップします
-ルートに複数のファイル/フォルダが含まれるアーカイブを指定した場合、エラーになります
-
 .EXAMPLE
 PS> Get-7ZipArchiveFileList -Path C:\Test.zip
-ItemType ModifiedDate       Size CRC32    Name
--------- ------------       ---- -----    ----
-Folder   2018/08/09 0:02:30    0          Folder
-File     2018/08/09 0:02:36  243 DAEF1A68 Folder\001.txt
 
 #>
 function Get-7ZipArchiveFileList {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, ParameterSetName = 'Path')]
         [ValidateNotNullOrEmpty()]
         [string]
         $Path,
 
-        [Parameter()]
-        [switch]
-        $IgnoreRoot
+        [Parameter(Mandatory = $true, DontShow = $true, ParameterSetName = 'Class')]
+        [ValidateNotNullOrEmpty()]
+        [Archive]
+        $Archive
     )
 
-    #TODO: Implement
+    # $Archive.GetFileList() メソッドのラッパー関数
 
-    <#
-    ### 想定する処理の流れ
-    1. $Pathが正しいか確認（ファイルが存在するか、正しいアーカイブか）
-    2. 7Zipを使ってアーカイブ内のファイルリストを取得
-    3. PowerShellで扱いやすいようファイルリストをパースしたうえで出力
-    出力は[PsCustomObject]で、Name, Size, ItemType, ModifiedDate, CRC32プロパティを含むこと'
-    #>
+    if ($PSCmdlet.ParameterSetName -eq 'Path') {
+        try {
+            $Archive = [Archive]::new($Path)
+        }
+        catch {
+            Write-Error -Exception $_.Exception
+            return
+        }
+    }
+
+    $Archive.GetFileList()
 
 }
 
