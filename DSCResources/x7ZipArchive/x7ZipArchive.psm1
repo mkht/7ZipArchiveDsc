@@ -121,20 +121,21 @@ class Archive {
 
         Write-Verbose ('Extracting archive: {0} to {1}' -f $this.Path, $FinalDestination)
 
+        # Test the archive has multiple root or not
         if ($IgnoreRoot) {
             $rootDir = $this.FileList | Where-Object { $_.Path.Contains('\') } | ForEach-Object { ($_.Path -split '\\')[0] } | Select-Object -First 1
             [bool]$HasMultipleRoot = $false
             foreach ($Item in $this.FileList) {
                 if (($Item.ItemType -eq 'Folder') -and ($Item.Path -ceq $rootDir)) {
-                    #Root dir
+                    # The item is Root dir
                     continue
                 }
                 elseif ($Item.Path.StartsWith(($rootDir + '\'), [System.StringComparison]::Ordinal)) {
-                    # In the root dir
+                    # The item in the root dir
                     continue
                 }
                 else {
-                    # Out of root dir
+                    # The item out of the root dir
                     $HasMultipleRoot = $true
                     break
                 }
@@ -572,8 +573,45 @@ function Test-ArchiveExistsAtDestination {
     }
 
     $fileList = $Archive.GetFileList()
+    $rootDir = $fileList | Where-Object { $_.Path.Contains('\') } | ForEach-Object { ($_.Path -split '\\')[0] } | Select-Object -First 1
+
+    # Test the archive has multiple root or not
+    if ($IgnoreRoot) {
+        [bool]$HasMultipleRoot = $false
+        foreach ($Item in $fileList) {
+            if (($Item.ItemType -eq 'Folder') -and ($Item.Path -ceq $rootDir)) {
+                # The item is Root dir
+                continue
+            }
+            elseif ($Item.Path.StartsWith(($rootDir + '\'), [System.StringComparison]::Ordinal)) {
+                # The item in the root dir
+                continue
+            }
+            else {
+                # The item out of the root dir
+                $HasMultipleRoot = $true
+                break
+            }
+        }
+
+        if ($HasMultipleRoot) {
+            throw [System.InvalidOperationException]::new("Archive has multiple items in the root. You can't use IgnoreRoot option.")
+        }
+    }
+
     foreach ($Item in $fileList) {
-        $AbsolutePath = Join-Path -Path $Destination -ChildPath $Item.Path
+        if ($IgnoreRoot) {
+            $RelativePath = $Item.Path.Substring($rootDir.Length)
+            if ($RelativePath.Length -eq '0') {
+                Write-Verbose ('Skip root folder: "{0}"' -f $Item.Path)
+                continue
+            }
+        }
+        else {
+            $RelativePath = $Item.Path
+        }
+        $AbsolutePath = Join-Path -Path $Destination -ChildPath $RelativePath
+
         $tParam = @{
             LiteralPath = $AbsolutePath
             PathType    = $(if ($Item.ItemType -eq 'File') { 'Leaf' }else { 'Container' })
