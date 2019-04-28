@@ -8,7 +8,7 @@ class x7ZipArchive : OMI_BaseResource
     [Write] Boolean Validate;
     [Write, ValueMap{"ModifiedDate","Size","CRC32"}, Values{"ModifiedDate","Size","CRC32"}] String Checksum;
     [Write] Boolean IgnoreRoot;
-    [Write] Boolean Force;
+    [Write] Boolean Clean;
     [Write, EmbeddedInstance("MSFT_Credential")] String Credential;
 };
 
