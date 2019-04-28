@@ -604,7 +604,7 @@ function Test-ArchiveExistsAtDestination {
                 }
             }
             elseif ($Checksum -eq 'CRC32') {
-                # Compare file size
+                # Compare file hash
                 $CurrentFileHash = Get-CRC32Hash -Path $CurrentFileInfo.FullName
                 if ($CurrentFileHash -ne $Item.CRC) {
                     Write-Verbose ('The hash of "{0}" is not same.' -f $Item.Path)
