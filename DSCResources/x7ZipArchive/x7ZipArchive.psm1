@@ -129,6 +129,10 @@ class Archive {
         # Test the archive has multiple root or not
         if ($IgnoreRoot) {
             $rootDir = $this.FileList | Where-Object { $_.Path.Contains('\') } | ForEach-Object { ($_.Path -split '\\')[0] } | Select-Object -First 1
+            if (-not $rootDir) {
+                throw [System.InvalidOperationException]::new("Archive has no item or only one file in the root. You can't use IgnoreRoot option.")
+            }
+
             [bool]$HasMultipleRoot = $false
             foreach ($Item in $this.FileList) {
                 if (($Item.ItemType -eq 'Folder') -and ($Item.Path -ceq $rootDir)) {
@@ -648,6 +652,10 @@ function Test-ArchiveExistsAtDestination {
 
     $fileList = $Archive.GetFileList()
     $rootDir = $fileList | Where-Object { $_.Path.Contains('\') } | ForEach-Object { ($_.Path -split '\\')[0] } | Select-Object -First 1
+    if (-not $rootDir) {
+        Write-Error -Exception ([System.InvalidOperationException]::new("Archive has no item or only one file in the root. You can't use IgnoreRoot option."))
+        return
+    }
 
     # Test the archive has multiple root or not
     if ($IgnoreRoot) {

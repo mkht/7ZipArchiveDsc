@@ -830,7 +830,7 @@ InModuleScope 'x7ZipArchive' {
                 $PathOfArchive = Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip'
                 $Destination = Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())
 
-                { Expand-7ZipArchive -Path $PathOfArchive -Destination $Destination } | Should -Throw "Archive has multiple items in the root. You can't use IgnoreRoot option."
+                { Expand-7ZipArchive -Path $PathOfArchive -Destination $Destination } | Should -Throw "Archive has no item or only one file in the root. You can't use IgnoreRoot option."
                 Test-Path -Path $Destination | Should -Be $false
             }
 
