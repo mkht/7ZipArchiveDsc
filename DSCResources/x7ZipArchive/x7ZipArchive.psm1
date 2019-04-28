@@ -1,4 +1,4 @@
-﻿#Requires -Version 5
+#Requires -Version 5
 
 $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
 $script:Crc32NET = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\Crc32.NET\Crc32.NET.dll'
@@ -801,7 +801,7 @@ function Expand-7ZipArchive {
     if ($Clean) {
         Write-Verbose ('Clean option is specified. Remove all items in {0}' -f $Destination)
         if (Test-Path -LiteralPath $Destination -PathType Container) {
-            Get-ChildItem -LiteralPath $Destination -Recurse -Verbose:$false | Remove-Item -Force -Recurse -ErrorAction Stop -Verbose:$false
+            Get-ChildItem -LiteralPath $Destination -Recurse -Force -Verbose:$false -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue -Verbose:$false
         }
     }
 
