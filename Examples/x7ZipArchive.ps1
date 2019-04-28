@@ -10,7 +10,7 @@ Configuration Example
             Destination = 'C:\Destination'
             Validate    = $true
             Checksum    = 'Size'
-            Force       = $true
+            Clean       = $true
         }
     }
 }
