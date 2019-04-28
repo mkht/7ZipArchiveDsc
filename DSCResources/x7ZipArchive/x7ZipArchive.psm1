@@ -1,4 +1,4 @@
-#Requires -Version 5
+﻿#Requires -Version 5
 
 $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
 $script:Crc32NET = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\Crc32.NET\Crc32.NET.dll'
@@ -674,25 +674,31 @@ function Test-ArchiveExistsAtDestination {
 
 .PARAMETER Destination
 アーカイブファイルの展開先フォルダを指定します
+展開先フォルダ内にアーカイブ内のファイルと同名のファイルが存在する場合は、確認なしで上書きされることに注意してください
 
 .PARAMETER IgnoreRoot
 IgnoreRootが指定された場合、アーカイブ内のルートフォルダを除外して展開します
 
-.PARAMETER Force
-Forceが指定された場合、展開先フォルダの既存ファイルをアーカイブ内のファイルで上書きします
-指定しない場合、展開先フォルダとアーカイブ内に同名のファイルが存在する場合、上書きせずエラーを出力します
+.PARAMETER Clean
+Cleanが指定された場合、展開先フォルダの既存ファイルをすべて削除してからアーカイブを展開します
+指定しない場合、展開先フォルダの既存ファイルは残したまま展開します
 
 .EXAMPLE
-Expand-7ZipArchive -Path C:\Test.zip -Destination C:\Dest -Force
+Expand-7ZipArchive -Path C:\Test.zip -Destination C:\Dest -Clean
 
 #>
 function Expand-7ZipArchive {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, ParameterSetName = 'Path')]
         [ValidateNotNullOrEmpty()]
         [string]
         $Path,
+
+        [Parameter(Mandatory = $true, DontShow = $true, ParameterSetName = 'Class')]
+        [ValidateNotNullOrEmpty()]
+        [Archive]
+        $Archive,
 
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -705,20 +711,43 @@ function Expand-7ZipArchive {
 
         [Parameter()]
         [switch]
-        $Force
+        $Clean
     )
 
-    #TODO: Implement
-
     <#
-    ### 想定する処理の流れ
+    ### 処理の流れ
     1. $Pathが正しいか確認（ファイルが存在するか、正しいアーカイブか）
     2. Destinationフォルダが存在しない場合はDestinationフォルダを作る
-    3. 7Zipを使ってアーカイブをDestinationに展開
-        3-1. アーカイブ内のファイルと同名のファイルがDestinationに存在する場合は処理停止して例外終了
-        3-2. ただしForceスイッチが指定されている場合は上書き
+    3. Cleanスイッチが指定されている場合はDestinationフォルダ内の全ファイルを削除
+    4. 7Zipを使ってアーカイブをDestinationに展開
     #>
 
+    if ($PSCmdlet.ParameterSetName -eq 'Path') {
+        try {
+            $Archive = [Archive]::new($Path)
+        }
+        catch {
+            Write-Error -Exception $_.Exception
+            return
+        }
+    }
+
+    if (-not (Test-Path -LiteralPath $Destination -PathType Container)) {
+        $null = New-Item -Path $Destination -ItemType Directory -Force
+    }
+
+    if ($Clean) {
+        Write-Verbose ('Clean option is specified. Remove all items in {0}' -f $Destination)
+        Get-ChildItem -LiteralPath $Destination -Recurse -Verbose:$false | Remove-Item -Force -Recurse -ErrorAction Stop -Verbose:$false
+    }
+
+    try {
+        $Archive.Extract($Destination, $IgnoreRoot)
+    }
+    catch {
+        Write-Error -Exception $_.Exception
+        return
+    }
 }
 
 
