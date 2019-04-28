@@ -1,4 +1,4 @@
-﻿#Requires -Version 5
+#Requires -Version 5
 
 $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
 $script:Crc32NET = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\Crc32.NET\Crc32.NET.dll'
@@ -558,6 +558,7 @@ function Test-ArchiveExistsAtDestination {
         }
         catch {
             Write-Error -Exception $_.Exception
+            return
         }
     }
 
@@ -597,7 +598,8 @@ function Test-ArchiveExistsAtDestination {
         }
 
         if ($HasMultipleRoot) {
-            throw [System.InvalidOperationException]::new("Archive has multiple items in the root. You can't use IgnoreRoot option.")
+            Write-Error -Exception ([System.InvalidOperationException]::new("Archive has multiple items in the root. You can't use IgnoreRoot option."))
+            return
         }
     }
 
