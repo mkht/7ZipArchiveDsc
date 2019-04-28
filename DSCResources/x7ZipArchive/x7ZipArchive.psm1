@@ -62,6 +62,8 @@ class Archive {
     static [Object[]]GetFileList([string]$Path) {
         $NewLine = [System.Environment]::NewLine
         [Archive]::TestArchive($Path) | Write-Debug
+
+        Write-Verbose 'Enumerating files & folders in the archive.'
         $ret = & $script:7zExe l $Path -ba -slt
         if ($LASTEXITCODE -ne [ExitCode]::Success) {
             throw [System.InvalidOperationException]::new($ret -join $NewLine)
