@@ -432,12 +432,12 @@ function Set-TargetResource {
 
         [Parameter()]
         [bool]
-        $Validate,
+        $Validate = $false,
 
         [Parameter()]
         [ValidateSet('ModifiedDate', 'Size', 'CRC32')]
         [string]
-        $Checksum,
+        $Checksum = 'ModifiedDate',
 
         [Parameter()]
         [bool]
@@ -445,23 +445,66 @@ function Set-TargetResource {
 
         [Parameter()]
         [bool]
-        $Force = $true,
+        $Clean = $false,
 
         [Parameter()]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential
     )
-
-    #TODO: Implement
-
     <#
-    ### 想定する処理の流れ
+    ### 処理の流れ
     1. $Pathの正当性を確認
-    2. $Pathにアクセスできず、Credentialが指定されている場合はMount-PSDriveWithCredentialを呼び出してマウントする
-        2-1. 終了時にはかならずRemove-PSDriveでアンマウントすること
+    2. $Pathにアクセスできず、Credentialが指定されている場合はNew-PSDriveでマウントする
+        2-1. 終了時にはかならずRemove-PSDriveでアンマウント
     3. Expand-7ZipArchiveを呼び出してアーカイブをDestinationに展開する
     #>
+
+    $local:Guid = [System.Guid]::NewGuid().toString()
+
+    # Checksumが指定されているが、ValidateがFalseの場合はエラー
+    if ($PSBoundParameters.ContainsKey('Checksum') -and (-not $Validate)) {
+        Write-Error 'Please specify the Validate parameter as true to use the Checksum parameter.'
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        if ($Credential) {
+            New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -Credential $Credential
+            if (-not (Test-Path -LiteralPath $Path)) {
+                Write-Error ('Could not access the file "{0}"' -f $Path)
+                Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
+                return
+            }
+        }
+        else {
+            Write-Error "The path $Path does not exist or is not a file"
+            return
+        }
+    }
+
+    $testParam = @{
+        Path        = $Path
+        Destination = $Destination
+        IgnoreRoot  = $IgnoreRoot
+        Clean       = $Clean
+    }
+
+    if ($Validate) {
+        $testParam.Checksum = $Checksum
+    }
+
+    try {
+        Expand-7ZipArchive @testParam -ErrorAction Stop
+    }
+    catch {
+        Write-Error -Exception $_.Exception
+    }
+    finally {
+        if (Get-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue) {
+            Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
+        }
+    }
 
 } # end of Set-TargetResource
 

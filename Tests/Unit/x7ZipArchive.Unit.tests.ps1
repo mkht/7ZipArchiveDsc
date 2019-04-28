@@ -426,21 +426,21 @@ InModuleScope 'x7ZipArchive' {
 
             It 'アーカイブパスが存在しない場合は例外発生' {
                 $PathOfArchive = Join-Path "TestDrive:\$script:TestGuid" 'NotExist.zip'
-                { Get-7ZipArchiveFileList -Path $PathOfArchive } | Should -Throw "The path $PathOfArchive does not exist or is not a file"
+                { Get-7ZipArchiveFileList -Path $PathOfArchive } | Should -Throw -ExceptionType ([System.IO.FileNotFoundException])
             }
 
             It 'アーカイブパスがファイルでない場合は例外発生' {
                 $PathOfFolder = Join-Path "TestDrive:\$script:TestGuid" 'Folder.zip'
                 New-Item $PathOfFolder -ItemType Directory -Force >$null
 
-                { Get-7ZipArchiveFileList -Path $PathOfFolder } | Should -Throw "The path $PathOfFolder does not exist or is not a file"
+                { Get-7ZipArchiveFileList -Path $PathOfFolder } | Should -Throw -ExceptionType ([System.IO.FileNotFoundException])
             }
 
             It '指定されたファイルがアーカイブファイルでない場合は例外発生' {
                 $PathOfInvalidArchive = Join-Path "TestDrive:\$script:TestGuid" 'InvalidZIP.zip'
                 'This is not an Archive' | Out-File -FilePath (Join-Path "TestDrive:\$script:TestGuid" 'InvalidZIP.zip')
 
-                { Get-7ZipArchiveFileList -Path $PathOfInvalidArchive } | Should -Throw "The file $PathOfInvalidArchive is not a valid archive"
+                { Get-7ZipArchiveFileList -Path $PathOfInvalidArchive } | Should -Throw "Can not open the file as archive"
             }
 
             It 'IgnoreRootが指定されている場合で、アーカイブにひとつの"ファイル"のみが含まれる場合は例外発生' {
@@ -822,7 +822,7 @@ InModuleScope 'x7ZipArchive' {
                 'This is not an Archive' | Out-File -FilePath (Join-Path "TestDrive:\$script:TestGuid" 'InvalidZIP.zip')
                 $Destination = Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())
 
-                { Expand-7ZipArchive -Path $PathOfInvalidArchive -Destination $Destination } | Should -Throw "The file $PathOfInvalidArchive is not a valid archive"
+                { Expand-7ZipArchive -Path $PathOfInvalidArchive -Destination $Destination } | Should -Throw "Can not open the file as archive"
                 Test-Path -Path $Destination | Should -Be $false
             }
 
