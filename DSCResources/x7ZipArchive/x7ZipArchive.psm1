@@ -281,15 +281,11 @@ function Get-TargetResource {
         [Parameter()]
         [ValidateSet('ModifiedDate', 'Size', 'CRC32')]
         [string]
-        $Checksum,
+        $Checksum = 'ModifiedDate',
 
         [Parameter()]
         [bool]
         $IgnoreRoot = $false,
-
-        [Parameter()]
-        [bool]
-        $Force = $true,
 
         [Parameter()]
         [System.Management.Automation.PSCredential]
@@ -297,19 +293,64 @@ function Get-TargetResource {
         $Credential
     )
 
-    #TODO: Implement
-
     <#
-    ### 想定する処理の流れ
+    ### 処理の流れ
     1. $Pathの正当性を確認
-    2. $Pathにアクセスできず、Credentialが指定されている場合はMount-PSDriveWithCredentialを呼び出してマウントする
-        2-1. 終了時にはかならずRemove-PSDriveでアンマウントすること
+    2. $Pathにアクセスできず、Credentialが指定されている場合はNew-PSDriveでマウントする
+        2-1. 終了時にはかならずRemove-PSDriveでアンマウントする
     3. Test-ArchiveExistsAtDestinationを呼び出してアーカイブがDestinationに展開済みかどうかチェック
     4. 展開済みであればEnsureにPresentをセットしたHashTableを、未展開であればEnsureにAbsentをセットしたHashTableを返す
     #>
 
+    $local:Guid = [System.Guid]::NewGuid().toString()
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        if ($Credential) {
+            New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -Credential $Credential
+            if (-not (Test-Path -LiteralPath $Path)) {
+                Write-Error ('Could not access the file "{0}"' -f $Path)
+                Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
+                return
+            }
+        }
+        else {
+            Write-Error ('Could not access the file "{0}"' -f $Path)
+            return
+        }
+    }
+
+    $testParam = @{
+        Path        = $Path
+        Destination = $Destination
+        IgnoreRoot  = $IgnoreRoot
+    }
+
+    if ($Validate) {
+        $testParam.Checksum = $Checksum
+    }
+
+    try {
+        $testResult = Test-ArchiveExistsAtDestination @testParam -ErrorAction Stop
+    }
+    catch {
+        Write-Error -Exception $_.Exception
+        return
+    }
+    finally {
+        if (Get-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue) {
+            Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
+        }
+    }
+
+    if ($testResult) {
+        $Ensure = 'Present'
+    }
+    else {
+        $Ensure = 'Absent'
+    }
+
     return @{
-        Ensure      = 'Present'
+        Ensure      = $Ensure
         Path        = $Path
         Destination = $Destination
     }
@@ -336,36 +377,30 @@ function Test-TargetResource {
 
         [Parameter()]
         [bool]
-        $Validate,
+        $Validate = $false,
 
         [Parameter()]
         [ValidateSet('ModifiedDate', 'Size', 'CRC32')]
         [string]
-        $Checksum,
+        $Checksum = 'ModifiedDate',
 
         [Parameter()]
         [bool]
         $IgnoreRoot = $false,
 
         [Parameter()]
-        [bool]
-        $Force = $true,
-
-        [Parameter()]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential
     )
-
-    #TODO: Implement
-
     <#
-    ### 想定する処理の流れ
+    ### 処理の流れ
     1. Get-TargetResourceを呼び出す
     2. 1の返り値のEnsureプロパティがPresentならTrueを、AbsentならFalseを返す
     #>
 
-    return $false
+    $ret = (Get-TargetResource @PSBoundParameters -ErrorAction Stop).Ensure
+    return ($ret -eq 'Present')
 } # end of Test-TargetResource
 
 
@@ -459,6 +494,13 @@ function Mount-PSDriveWithCredential {
     2. New-PSDriveコマンドレットを使用してパスを資格情報指定でマウントする
     #>
 
+    if (Test-Path -LiteralPath $Path) {
+        return
+    }
+    else {
+        $Guid = [System.Guid]::NewGuid().toString()
+        New-PSDrive -Name $Guid
+    }
 
 
 }
