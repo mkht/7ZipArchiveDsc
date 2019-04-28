@@ -794,9 +794,8 @@ function Expand-7ZipArchive {
     <#
     ### 処理の流れ
     1. $Pathが正しいか確認（ファイルが存在するか、正しいアーカイブか）
-    2. Destinationフォルダが存在しない場合はDestinationフォルダを作る
-    3. Cleanスイッチが指定されている場合はDestinationフォルダ内の全ファイルを削除
-    4. 7Zipを使ってアーカイブをDestinationに展開
+    2. Cleanスイッチが指定されている場合はDestinationフォルダ内の全ファイルを削除
+    3. 7Zipを使ってアーカイブをDestinationに展開
     #>
 
     if ($PSCmdlet.ParameterSetName -eq 'Path') {
@@ -809,13 +808,11 @@ function Expand-7ZipArchive {
         }
     }
 
-    if (-not (Test-Path -LiteralPath $Destination -PathType Container)) {
-        $null = New-Item -Path $Destination -ItemType Directory -Force
-    }
-
     if ($Clean) {
         Write-Verbose ('Clean option is specified. Remove all items in {0}' -f $Destination)
-        Get-ChildItem -LiteralPath $Destination -Recurse -Verbose:$false | Remove-Item -Force -Recurse -ErrorAction Stop -Verbose:$false
+        if (Test-Path -LiteralPath $Destination -PathType Container) {
+            Get-ChildItem -LiteralPath $Destination -Recurse -Verbose:$false | Remove-Item -Force -Recurse -ErrorAction Stop -Verbose:$false
+        }
     }
 
     try {
