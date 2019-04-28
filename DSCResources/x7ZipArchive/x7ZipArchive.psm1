@@ -635,18 +635,22 @@ function Test-ArchiveExistsAtDestination {
                 }
             }
             elseif ($Checksum -eq 'Size') {
-                # Compare file size
-                if ($CurrentFileInfo.Length -ne $Item.Size) {
-                    Write-Verbose ('The size of "{0}" is not same.' -f $Item.Path)
-                    return $false
+                if (-not $CurrentFileInfo.PsIsContainer) {
+                    # Compare file size
+                    if ($CurrentFileInfo.Length -ne $Item.Size) {
+                        Write-Verbose ('The size of "{0}" is not same.' -f $Item.Path)
+                        return $false
+                    }
                 }
             }
             elseif ($Checksum -eq 'CRC32') {
-                # Compare file hash
-                $CurrentFileHash = Get-CRC32Hash -Path $CurrentFileInfo.FullName
-                if ($CurrentFileHash -ne $Item.CRC) {
-                    Write-Verbose ('The hash of "{0}" is not same.' -f $Item.Path)
-                    return $false
+                if (-not $CurrentFileInfo.PsIsContainer) {
+                    # Compare file hash
+                    $CurrentFileHash = Get-CRC32Hash -Path $CurrentFileInfo.FullName
+                    if ($CurrentFileHash -ne $Item.CRC) {
+                        Write-Verbose ('The hash of "{0}" is not same.' -f $Item.Path)
+                        return $false
+                    }
                 }
             }
         }
