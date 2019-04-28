@@ -51,7 +51,8 @@ class Archive {
         }
 
         # Test integrity of archive
-        $msg = & $script:7zExe t $Path -ba
+        $msg = $null
+        try { $msg = & $script:7zExe t $Path -ba }catch { }
         if ($LASTEXITCODE -ne [ExitCode]::Success) {
             throw [System.ArgumentException]::new($msg -join $NewLine)
         }
@@ -64,7 +65,8 @@ class Archive {
         [Archive]::TestArchive($Path) | Write-Debug
 
         Write-Verbose 'Enumerating files & folders in the archive.'
-        $ret = & $script:7zExe l $Path -ba -slt
+        $ret = $null
+        try { $ret = & $script:7zExe l $Path -ba -slt }catch { }
         if ($LASTEXITCODE -ne [ExitCode]::Success) {
             throw [System.InvalidOperationException]::new($ret -join $NewLine)
         }
@@ -158,24 +160,30 @@ class Archive {
         }
 
         if ($IgnoreRoot) {
-            & $script:7zExe x $this.Path -ba -o"$Destination" -y -aoa -spe -bsp1 | ForEach-Object -Process {
-                if ($_ -match '(\d+)\%') {
-                    $progress = $Matches.1
-                    if ([int]::TryParse($progress, [ref]$progress)) {
-                        Write-Progress -Activity $activityMessage -Status $statusMessage -PercentComplete $progress -CurrentOperation "$progress % completed."
+            try {
+                & $script:7zExe x $this.Path -ba -o"$Destination" -y -aoa -spe -bsp1 | ForEach-Object -Process {
+                    if ($_ -match '(\d+)\%') {
+                        $progress = $Matches.1
+                        if ([int]::TryParse($progress, [ref]$progress)) {
+                            Write-Progress -Activity $activityMessage -Status $statusMessage -PercentComplete $progress -CurrentOperation "$progress % completed."
+                        }
                     }
                 }
             }
+            catch { }
         }
         else {
-            & $script:7zExe x $this.Path -ba -o"$Destination" -y -aoa -bsp1 | ForEach-Object -Process {
-                if ($_ -match '(\d+)\%') {
-                    $progress = $Matches.1
-                    if ([int]::TryParse($progress, [ref]$progress)) {
-                        Write-Progress -Activity $activityMessage -Status $statusMessage -PercentComplete $progress -CurrentOperation "$progress % completed."
+            try {
+                & $script:7zExe x $this.Path -ba -o"$Destination" -y -aoa -bsp1 | ForEach-Object -Process {
+                    if ($_ -match '(\d+)\%') {
+                        $progress = $Matches.1
+                        if ([int]::TryParse($progress, [ref]$progress)) {
+                            Write-Progress -Activity $activityMessage -Status $statusMessage -PercentComplete $progress -CurrentOperation "$progress % completed."
+                        }
                     }
                 }
             }
+            catch { }
         }
 
         $ExitCode = $LASTEXITCODE
@@ -316,10 +324,10 @@ function Get-TargetResource {
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         if ($Credential) {
-            New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -Credential $Credential
+            New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential
             if (-not (Test-Path -LiteralPath $Path)) {
-                Write-Error ('Could not access the file "{0}"' -f $Path)
                 Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
+                Write-Error ('Could not access the file "{0}"' -f $Path)
                 return
             }
         }
@@ -470,10 +478,10 @@ function Set-TargetResource {
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         if ($Credential) {
-            New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -Credential $Credential
+            New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential
             if (-not (Test-Path -LiteralPath $Path)) {
-                Write-Error ('Could not access the file "{0}"' -f $Path)
                 Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
+                Write-Error ('Could not access the file "{0}"' -f $Path)
                 return
             }
         }

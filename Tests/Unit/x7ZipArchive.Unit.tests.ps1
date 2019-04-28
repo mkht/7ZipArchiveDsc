@@ -24,6 +24,7 @@ InModuleScope 'x7ZipArchive' {
 
         BeforeAll {
             Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
+            $ErrorActionPreference = 'Stop'
         }
 
         Context 'エラーパターン' {
@@ -67,15 +68,14 @@ InModuleScope 'x7ZipArchive' {
                 { Get-TargetResource @getParam } | Should -Throw "Please specify the Validate parameter as true to use the Checksum parameter."
             }
 
-            Mock Test-ArchiveExistsAtDestination -MockWith { throw 'Exception' }
 
             It 'Test-ArchiveExistsAtDestinationで例外発生した場合は例外発生' {
-                $PathOfFolder = "TestDrive:\$script:TestGuid\Folder"
+                Mock Test-ArchiveExistsAtDestination -MockWith { throw 'Exception' }
+                $PathOfArchive = Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip'
                 $PathOfDestination = "TestDrive:\$script:TestGuid\Destination"
-                New-Item -Path $PathOfFolder -ItemType Container -ErrorAction SilentlyContinue >$null
 
                 $getParam = @{
-                    Path        = $PathOfFolder
+                    Path        = $PathOfArchive
                     Destination = $PathOfDestination
                 }
 
@@ -85,29 +85,6 @@ InModuleScope 'x7ZipArchive' {
         }
 
         Context '正しいアーカイブパスと展開先が指定されている場合' {
-
-            Context '展開先フォルダが存在しない場合' {
-                Mock Test-ArchiveExistsAtDestination { return $true }
-
-                $PathOfArchive = Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip'
-                $PathOfNotExist = "TestDrive:\$script:TestGuid\NotExist"
-                New-Item $PathOfNotExist -ItemType File -Force >$null
-
-                It 'EnsureプロパティがAbsentのHashTableを返す' {
-                    $getParam = @{
-                        Path        = $PathOfArchive
-                        Destination = $PathOfNotExist
-                    }
-
-                    $result = Get-TargetResource @getParam
-
-                    Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -Times 0 -Exactly -Scope It
-                    $result | Should -BeOfType 'HashTable'
-                    $result.Ensure | Should -Be 'Absent'
-                    $result.Path | Should -Be $PathOfArchive
-                    $result.Destination | Should -Be $PathOfNotExist
-                }
-            }
 
             Context '展開先にアーカイブが展開されていない場合' {
 
@@ -141,7 +118,7 @@ InModuleScope 'x7ZipArchive' {
                 Mock Test-ArchiveExistsAtDestination { return $false } -ParameterFilter { $Checksum -eq 'Size' }
                 Mock Test-ArchiveExistsAtDestination { return $false }
 
-                Mock New-PSDriveWithCredential { } -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) }
+                Mock New-PSDrive { } -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) }
                 Mock Remove-PSDrive { }
 
                 BeforeAll {
@@ -186,7 +163,7 @@ InModuleScope 'x7ZipArchive' {
                         $result.Destination | Should -Be $PathOfAlreadyExpanded
                     }
 
-                    It 'EnsureプロパティがPresentのHashTableを返す (Credential指定あり）' {
+                    It 'EnsureプロパティがPresentのHashTableを返す (Credential指定あり、アーカイブへアクセス可）' {
                         $getParam = @{
                             Path        = $PathOfArchive
                             Destination = $PathOfAlreadyExpanded
@@ -196,12 +173,27 @@ InModuleScope 'x7ZipArchive' {
                         $result = Get-TargetResource @getParam
 
                         Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Scope It
-                        Assert-MockCalled -CommandName 'New-PSDrive' -ParameterFilter { $Credential -and ($Credential.UserName -eq $TestCredential.UserName) } -Times 1 -Exactly -Scope It
-                        Assert-MockCalled -CommandName 'Remove-PSDrive' -Times 1 -Exactly -Scope It
+                        Assert-MockCalled -CommandName 'New-PSDrive' -Times 0 -Exactly -Scope It
+                        Assert-MockCalled -CommandName 'Remove-PSDrive' -Times 0 -Exactly -Scope It
 
                         $result.Ensure | Should -Be 'Present'
                         $result.Path | Should -Be $PathOfArchive
                         $result.Destination | Should -Be $PathOfAlreadyExpanded
+                    }
+
+                    It '例外発生 (Credential指定あり、アーカイブへアクセス不可）' {
+                        $PathNotExist = 'TestDrive:\NotExist\Nothing.zip'
+                        $getParam = @{
+                            Path        = $PathNotExist
+                            Destination = $PathOfAlreadyExpanded
+                            Credential  = $script:TestCredential
+                        }
+
+                        { Get-TargetResource @getParam } | Should -Throw ('Could not access the file "{0}"' -f $PathNotExist)
+
+                        Assert-MockCalled -CommandName 'New-PSDrive' -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) } -Times 1 -Exactly -Scope It
+                        Assert-MockCalled -CommandName 'Remove-PSDrive' -Times 1 -Exactly -Scope It
+                        Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -Times 0 -Scope It
                     }
                 }
 
@@ -298,11 +290,12 @@ InModuleScope 'x7ZipArchive' {
         Mock Expand-7ZipArchive -MockWith { } -ParameterFilter { $Force -eq $false }
         Mock Expand-7ZipArchive -MockWith { }
 
-        Mock Mount-PSDriveWithCredential { } -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) }
-        Mock Mount-PSDriveWithCredential
+        Mock New-PSDrive { } -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) }
+        Mock Remove-PSDrive
 
         BeforeAll {
             Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
+            $ErrorActionPreference = 'Stop'
         }
 
         Context 'エラーパターン' {
@@ -407,7 +400,7 @@ InModuleScope 'x7ZipArchive' {
                 }
 
                 { Set-TargetResource @setParam } | Should -Not -Throw
-                Assert-MockCalled -CommandName 'Mount-PSDriveWithCredential' -ParameterFilter { $Credential -and ($Credential.UserName -eq $TestCredential.UserName) } -Times 1 -Exactly -Scope It
+                Assert-MockCalled -CommandName 'New-PSDrive' -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) } -Times 1 -Exactly -Scope It
                 Assert-MockCalled -CommandName 'Expand-7ZipArchive' -Times 1 -Scope It
             }
         }
@@ -420,104 +413,70 @@ InModuleScope 'x7ZipArchive' {
 
         BeforeAll {
             Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
+            $ErrorActionPreference = 'Stop'
         }
 
         Context 'エラーパターン' {
 
             It 'アーカイブパスが存在しない場合は例外発生' {
-                $PathOfArchive = Join-Path "TestDrive:\$script:TestGuid" 'NotExist.zip'
+                $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'NotExist.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 { Get-7ZipArchiveFileList -Path $PathOfArchive } | Should -Throw -ExceptionType ([System.IO.FileNotFoundException])
             }
 
             It 'アーカイブパスがファイルでない場合は例外発生' {
-                $PathOfFolder = Join-Path "TestDrive:\$script:TestGuid" 'Folder.zip'
+                $PathOfFolder = (Join-Path "TestDrive:\$script:TestGuid" 'Folder.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 New-Item $PathOfFolder -ItemType Directory -Force >$null
 
                 { Get-7ZipArchiveFileList -Path $PathOfFolder } | Should -Throw -ExceptionType ([System.IO.FileNotFoundException])
             }
 
             It '指定されたファイルがアーカイブファイルでない場合は例外発生' {
-                $PathOfInvalidArchive = Join-Path "TestDrive:\$script:TestGuid" 'InvalidZIP.zip'
+                $PathOfInvalidArchive = (Join-Path "TestDrive:\$script:TestGuid" 'InvalidZIP.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 'This is not an Archive' | Out-File -FilePath (Join-Path "TestDrive:\$script:TestGuid" 'InvalidZIP.zip')
 
-                { Get-7ZipArchiveFileList -Path $PathOfInvalidArchive } | Should -Throw "Can not open the file as archive"
-            }
-
-            It 'IgnoreRootが指定されている場合で、アーカイブにひとつの"ファイル"のみが含まれる場合は例外発生' {
-                $PathOfArchive = Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip'
-                { Get-7ZipArchiveFileList -Path $PathOfArchive -IgnoreRoot } | Should -Throw "When the IgnoreRoot parameter is specified, there must be only one folder in the root of the archive."
-            }
-
-            It 'IgnoreRootが指定されている場合で、アーカイブのルートに複数のファイル/フォルダが含まれる場合は例外発生' {
-                $PathOfArchive = Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip'
-                { Get-7ZipArchiveFileList -Path $PathOfArchive -IgnoreRoot } | Should -Throw "When the IgnoreRoot parameter is specified, there must be only one folder in the root of the archive."
+                { Get-7ZipArchiveFileList -Path $PathOfInvalidArchive } | Should -Throw -ExceptionType ([System.ArgumentException])
             }
         }
 
         Context 'ZIPファイルリスト取得' {
 
             Context 'ファイル一つのみを含むアーカイブ' {
-                It '出力は[PsCustomObject]で、Name, Size, ItemType, ModifiedDate, CRC32プロパティを含むこと' {
-                    $PathOfArchive = Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip'
+                It '出力はPath, Size, ItemType, Modified, CRCプロパティを含むこと' {
+                    $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                     $Result = Get-7ZipArchiveFileList -Path $PathOfArchive
 
-                    $Result | Should -BeOfType 'PsCustomObject'
-                    $Result.Name | Should -Be 'Hello Archive.txt'
+                    $Result.Path | Should -Be 'Hello Archive.txt'
                     $Result.Size | Should -BeOfType 'int'
                     $Result.Size | Should -Be 14
                     $Result.ItemType | Should -Be 'File'
-                    $Result.ModifiedDate | Should -BeOfType 'DateTime'
-                    $Result.ModifiedDate.toString() | Should -Be '2018/08/09 0:02:49'
-                    $Result.CRC32 | Should -BeOfType 'string'
-                    $Result.CRC32 | Should -Be '9E5F60BB'
+                    $Result.Modified | Should -BeOfType 'DateTime'
+                    $Result.Modified.toString() | Should -Be '2018/08/09 0:02:18'
+                    $Result.CRC | Should -BeOfType 'string'
+                    $Result.CRC | Should -Be '9E5F60BB'
                 }
             }
 
             Context '複数のファイル/フォルダを含むアーカイブ' {
 
-                It 'アーカイブ内のファイルリストを取得（出力は[PsCustomObject]の配列であること）' {
-                    $PathOfArchive = Join-Path "TestDrive:\$script:TestGuid" 'TestHasRoot.zip'
+                It 'アーカイブ内のファイルリストを取得' {
+                    $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestHasRoot.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                     $Result = Get-7ZipArchiveFileList -Path $PathOfArchive
 
-                    $Result | Should -BeOfType 'Array'
                     $Result | Should -HaveCount 5
                     $Result | Where-Object { $_.ItemType -eq 'File' } | Should -HaveCount 3
-                    $Result | Where-Object { $_.ItemType -eq 'Directory' } | Should -HaveCount 2
+                    $Result | Where-Object { $_.ItemType -eq 'Folder' } | Should -HaveCount 2
 
-                    $ContentInResult = $Result | Where-Object { $_.Name -match '002.txt' }
-                    $ContentInResult | Should -BeOfType 'PsCustomObject'
-                    $ContentInResult.Name | Should -Be 'root\Folder\002.txt'
+                    $ContentInResult = $Result | Where-Object { $_.Path -match '002.txt' }
+                    $ContentInResult.Path | Should -Be 'root\Folder\002.txt'
                     $ContentInResult.Size | Should -BeOfType 'int'
                     $ContentInResult.Size | Should -Be 6
                     $ContentInResult.ItemType | Should -Be 'File'
-                    $ContentInResult.ModifiedDate | Should -BeOfType 'DateTime'
-                    $ContentInResult.ModifiedDate.toString() | Should -Be '2018/08/09 0:02:51'
-                    $Result.CRC32 | Should -BeOfType 'string'
-                    $Result.CRC32 | Should -Be 'E448FDFB'
-                }
-
-                It 'アーカイブ内のファイルリストを取得 (IgnoreRoot指定ありの場合、ルートフォルダは除外したリストを返すこと)' {
-                    $PathOfArchive = Join-Path "TestDrive:\$script:TestGuid" 'TestHasRoot.zip'
-
-                    $Result = Get-7ZipArchiveFileList -Path $PathOfArchive -IgnoreRoot
-
-                    $Result | Should -BeOfType 'Array'
-                    $Result | Should -HaveCount 4
-                    $Result | Where-Object { $_.ItemType -eq 'File' } | Should -HaveCount 3
-                    $Result | Where-Object { $_.ItemType -eq 'Directory' } | Should -HaveCount 1
-
-                    $ContentInResult = $Result | Where-Object { $_.Name -match '002.txt' }
-                    $ContentInResult | Should -BeOfType 'PsCustomObject'
-                    $ContentInResult.Name | Should -Be 'Folder\002.txt'
-                    $ContentInResult.Size | Should -BeOfType 'int'
-                    $ContentInResult.Size | Should -Be 6
-                    $ContentInResult.ItemType | Should -Be 'File'
-                    $ContentInResult.ModifiedDate | Should -BeOfType 'DateTime'
-                    $ContentInResult.ModifiedDate.toString() | Should -Be '2018/08/09 0:02:51'
-                    $Result.CRC32 | Should -BeOfType 'string'
-                    $Result.CRC32 | Should -Be 'E448FDFB'
+                    $ContentInResult.Modified | Should -BeOfType 'DateTime'
+                    $ContentInResult.Modified.toString() | Should -Be '2018/08/09 0:02:51'
+                    $ContentInResult.CRC | Should -BeOfType 'string'
+                    $ContentInResult.CRC | Should -Be 'E448FDFB'
                 }
             }
         }
@@ -525,25 +484,13 @@ InModuleScope 'x7ZipArchive' {
         Context '7zファイル' {
 
             It 'アーカイブ内のファイルリストを取得' {
-                $PathOfArchive = Join-Path "TestDrive:\$script:TestGuid" 'TestHasRoot.7z'
+                $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestHasRoot.7z').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 $Result = Get-7ZipArchiveFileList -Path $PathOfArchive
 
-                $Result | Should -BeOfType 'Array'
                 $Result | Should -HaveCount 5
                 $Result | Where-Object { $_.ItemType -eq 'File' } | Should -HaveCount 3
-                $Result | Where-Object { $_.ItemType -eq 'Directory' } | Should -HaveCount 2
-            }
-
-            It 'アーカイブ内のファイルリストを取得 (IgnoreRoot指定あり)' {
-                $PathOfArchive = Join-Path "TestDrive:\$script:TestGuid" 'TestHasRoot.7z'
-
-                $Result = Get-7ZipArchiveFileList -Path $PathOfArchive -IgnoreRoot
-
-                $Result | Should -BeOfType 'Array'
-                $Result | Should -HaveCount 4
-                $Result | Where-Object { $_.ItemType -eq 'File' } | Should -HaveCount 3
-                $Result | Where-Object { $_.ItemType -eq 'Directory' } | Should -HaveCount 1
+                $Result | Where-Object { $_.ItemType -eq 'Folder' } | Should -HaveCount 2
             }
         }
 
