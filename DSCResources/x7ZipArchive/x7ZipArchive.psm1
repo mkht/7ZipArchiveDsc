@@ -276,7 +276,7 @@ function Get-TargetResource {
 
         [Parameter()]
         [bool]
-        $Validate,
+        $Validate = $false,
 
         [Parameter()]
         [ValidateSet('ModifiedDate', 'Size', 'CRC32')]
@@ -304,7 +304,13 @@ function Get-TargetResource {
 
     $local:Guid = [System.Guid]::NewGuid().toString()
 
-    if (-not (Test-Path -LiteralPath $Path)) {
+    # Checksumが指定されているが、ValidateがFalseの場合はエラー
+    if ($PSBoundParameters.ContainsKey('Checksum') -and (-not $Validate)) {
+        Write-Error 'Please specify the Validate parameter as true to use the Checksum parameter.'
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         if ($Credential) {
             New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -Credential $Credential
             if (-not (Test-Path -LiteralPath $Path)) {
@@ -314,7 +320,7 @@ function Get-TargetResource {
             }
         }
         else {
-            Write-Error ('Could not access the file "{0}"' -f $Path)
+            Write-Error "The path $Path does not exist or is not a file"
             return
         }
     }
