@@ -629,8 +629,6 @@ function Test-ArchiveExistsAtDestination {
     4. アーカイブ内のファイル/フォルダ全てがDestination内に存在していればTrueを、一つでも存在しないファイルがあればFalseを返す
     #>
 
-    $fileList = Get-7ZipArchiveFileList -Path $Path
-
     if (-not (Test-Path -LiteralPath $Destination -PathType Container)) {
         #Destination folder is not exist
         Write-Verbose 'The destination folder is not exist'
@@ -643,6 +641,8 @@ function Test-ArchiveExistsAtDestination {
         Write-Verbose 'The destination folder is empty'
         return $false
     }
+
+    $fileList = Get-7ZipArchiveFileList -Path $Path
 
     if ($Clean) {
         $ExistFileCount = @($ExistItems | Where-Object { -not $_.PsIsContainer }).Count
