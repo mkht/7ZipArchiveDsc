@@ -425,7 +425,7 @@ InModuleScope 'x7ZipArchive' {
                     $Result.Size | Should -Be 14
                     $Result.ItemType | Should -Be 'File'
                     $Result.Modified | Should -BeOfType 'DateTime'
-                    $Result.Modified.toString() | Should -Be '2018/08/09 0:02:18'
+                    $Result.Modified.ToUniversalTime().toString('s') | Should -Be '2018-08-08T15:02:18'
                     $Result.CRC | Should -BeOfType 'string'
                     $Result.CRC | Should -Be '9E5F60BB'
                 }
@@ -448,7 +448,7 @@ InModuleScope 'x7ZipArchive' {
                     $ContentInResult.Size | Should -Be 6
                     $ContentInResult.ItemType | Should -Be 'File'
                     $ContentInResult.Modified | Should -BeOfType 'DateTime'
-                    $ContentInResult.Modified.toString() | Should -Be '2018/08/09 0:02:51'
+                    $ContentInResult.Modified.ToUniversalTime().toString('s') | Should -Be '2018-08-08T15:02:51'
                     $ContentInResult.CRC | Should -BeOfType 'string'
                     $ContentInResult.CRC | Should -Be 'E448FDFB'
                 }
