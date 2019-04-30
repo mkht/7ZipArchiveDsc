@@ -322,7 +322,7 @@ function Get-TargetResource {
 
     # Checksumが指定されているが、ValidateがFalseの場合はエラー
     if ($PSBoundParameters.ContainsKey('Checksum') -and (-not $Validate)) {
-        Write-Error 'Please specify the Validate parameter as true to use the Checksum parameter.'
+        Write-Error -Exception ([System.ArgumentException]::new('Please specify the Validate parameter as true to use the Checksum parameter.'))
         return
     }
 
@@ -481,7 +481,7 @@ function Set-TargetResource {
 
     # Checksumが指定されているが、ValidateがFalseの場合はエラー
     if ($PSBoundParameters.ContainsKey('Checksum') -and (-not $Validate)) {
-        Write-Error 'Please specify the Validate parameter as true to use the Checksum parameter.'
+        Write-Error -Exception ([System.ArgumentException]::new('Please specify the Validate parameter as true to use the Checksum parameter.'))
         return
     }
 
