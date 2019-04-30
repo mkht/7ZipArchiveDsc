@@ -710,13 +710,18 @@ function Test-ArchiveExistsAtDestination {
         if ($Checksum) {
             $CurrentFileInfo = Get-Item -LiteralPath $AbsolutePath -Force
             if ($Checksum -eq 'ModifiedDate') {
-                # Truncate milliseconds
+                # Truncate milliseconds of the LastWriteTimeUtc property of the file at the destination
                 [datetime]$s = $CurrentFileInfo.LastWriteTimeUtc
-                $CurrentFileModifiedDate = [datetime]::new($s.Year, $s.Month, $s.Day, $s.Hour, $s.Minute, $s.Second, $s.Kind)
+                $CurrentFileModifiedDateUtc = [datetime]::new($s.Year, $s.Month, $s.Day, $s.Hour, $s.Minute, $s.Second, $s.Kind)
+
+                # Convert UTC time to Local time by using only the current time zone information and the DST information. (Emulate FileTimeToLocalFileTime() of Win32API)
+                # See http://support.microsoft.com/kb/932955 and https://devblogs.microsoft.com/oldnewthing/?p=42053
+                $CurrentFileModifiedDate = $CurrentFileModifiedDateUtc.Add([System.TimeZone]::CurrentTimeZone.GetUtcOffset([datetime]::Now))
+
                 # Compare datetime
-                if ($CurrentFileModifiedDate -ne $Item.Modified.ToUniversalTime()) {
+                if ($CurrentFileModifiedDate -ne $Item.Modified) {
                     Write-Verbose ('The modified date of "{0}" is not same.' -f $Item.Path)
-                    Write-Verbose ('Exist:{0} / Archive:{1}' -f $CurrentFileModifiedDate, $Item.Modified.ToUniversalTime())
+                    Write-Verbose ('Exist:{0} / Archive:{1}' -f $CurrentFileModifiedDate, $Item.Modified)
                     return $false
                 }
             }
