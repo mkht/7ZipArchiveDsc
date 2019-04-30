@@ -1,5 +1,5 @@
 # 7ZipArchiveDsc
-PowerShell DSC Resource to Install / Uninstall Windows Desktop Applications.
+PowerShell DSC Resource to expand an archive file to a specific path. 
 
 ## Install
 You can install the resource from [PowerShell Gallery](https://www.powershellgallery.com/packages/7ZipArchiveDsc/).
