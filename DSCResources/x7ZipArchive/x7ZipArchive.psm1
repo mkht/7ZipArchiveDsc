@@ -621,8 +621,7 @@ function Test-ArchiveExistsAtDestination {
         return $false
     }
 
-    $ExistItems = Get-ChildItem -LiteralPath $Destination -Recurse -Force
-    if (0 -eq @($ExistItems).Length) {
+    if ($null -eq (Get-ChildItem -LiteralPath $Destination -Force | Select-Object -First 1)) {
         #Destination folder is empty
         Write-Verbose 'The destination folder is empty'
         return $false
@@ -631,7 +630,7 @@ function Test-ArchiveExistsAtDestination {
     $fileList = Get-7ZipArchiveFileList -Path $Path
 
     if ($Clean) {
-        $ExistFileCount = @($ExistItems | Where-Object { -not $_.PsIsContainer }).Count
+        $ExistFileCount = @(Get-ChildItem -LiteralPath $Destination -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { -not $_.PsIsContainer }).Count
         $ArchiveFileCount = @($fileList | Where-Object { $_.ItemType -ne 'Folder' }).Count
         if ($ArchiveFileCount -ne $ExistFileCount) {
             Write-Verbose 'The number of destination files does not match the number of files in the archive'
