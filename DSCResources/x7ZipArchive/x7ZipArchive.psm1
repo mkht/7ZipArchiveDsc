@@ -326,19 +326,18 @@ function Get-TargetResource {
         return
     }
 
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction SilentlyContinue)) {
-        if ($Credential) {
-            $null = New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential
-            if (-not (Test-Path -LiteralPath $Path)) {
-                Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
-                Write-Error ('Could not access the file "{0}"' -f $Path)
-                return
-            }
-        }
-        else {
-            Write-Error "The path $Path does not exist or is not a file"
+    if ($Credential) {
+        $null = New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential
+        if (-not (Test-Path -LiteralPath $Path -ErrorAction SilentlyContinue)) {
+            Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
+            Write-Error ('Could not access the file "{0}"' -f $Path)
             return
         }
+    }
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction SilentlyContinue)) {
+        Write-Error "The path $Path does not exist or is not a file"
+        return
     }
 
     $testParam = @{
@@ -360,9 +359,7 @@ function Get-TargetResource {
         return
     }
     finally {
-        if (Get-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue) {
-            Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
-        }
+        Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
     }
 
     if ($testResult) {
@@ -485,19 +482,18 @@ function Set-TargetResource {
         return
     }
 
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        if ($Credential) {
-            New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential
-            if (-not (Test-Path -LiteralPath $Path)) {
-                Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
-                Write-Error ('Could not access the file "{0}"' -f $Path)
-                return
-            }
-        }
-        else {
-            Write-Error "The path $Path does not exist or is not a file"
+    if ($Credential) {
+        $null = New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential
+        if (-not (Test-Path -LiteralPath $Path -ErrorAction SilentlyContinue)) {
+            Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
+            Write-Error ('Could not access the file "{0}"' -f $Path)
             return
         }
+    }
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction SilentlyContinue)) {
+        Write-Error "The path $Path does not exist or is not a file"
+        return
     }
 
     $testParam = @{
@@ -514,9 +510,7 @@ function Set-TargetResource {
         Write-Error -Exception $_.Exception
     }
     finally {
-        if (Get-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue) {
-            Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
-        }
+        Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
     }
 
 } # end of Set-TargetResource

@@ -173,8 +173,8 @@ InModuleScope 'x7ZipArchive' {
                         $result = Get-TargetResource @getParam
 
                         Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Scope It
-                        Assert-MockCalled -CommandName 'New-PSDrive' -Times 0 -Exactly -Scope It
-                        Assert-MockCalled -CommandName 'Remove-PSDrive' -Times 0 -Exactly -Scope It
+                        Assert-MockCalled -CommandName 'New-PSDrive' -Times 1 -Exactly -Scope It
+                        Assert-MockCalled -CommandName 'Remove-PSDrive' -Times 1 -Exactly -Scope It
 
                         $result.Ensure | Should -Be 'Present'
                         $result.Path | Should -Be $PathOfArchive
