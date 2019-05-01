@@ -318,7 +318,7 @@ function Get-TargetResource {
     4. 展開済みであればEnsureにPresentをセットしたHashTableを、未展開であればEnsureにAbsentをセットしたHashTableを返す
     #>
 
-    $local:Guid = [System.Guid]::NewGuid().toString()
+    $local:PsDrive = $null
 
     # Checksumが指定されているが、ValidateがFalseの場合はエラー
     if ($PSBoundParameters.ContainsKey('Checksum') -and (-not $Validate)) {
@@ -327,21 +327,12 @@ function Get-TargetResource {
     }
 
     if ($Credential) {
-        try {
-            $null = New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential -ErrorAction Stop
-            if (-not (Test-Path -LiteralPath $Path -ErrorAction SilentlyContinue)) {
-                throw ('Could not access the file "{0}"' -f $Path)
-            }
-        }
-        catch {
-            Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
-            Write-Error -Exception $_.Exception
-            return
-        }
+        $local:PsDrive = Mount-PSDriveWithCredential -Root (Split-Path $Path -Parent) -Credential $Credential -ErrorAction Stop
     }
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction SilentlyContinue)) {
         Write-Error "The path $Path does not exist or is not a file"
+        UnMount-PSDrive -Name $local:PsDrive.Name -ErrorAction SilentlyContinue
         return
     }
 
@@ -364,7 +355,7 @@ function Get-TargetResource {
         return
     }
     finally {
-        Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
+        UnMount-PSDrive -Name $local:PsDrive.Name -ErrorAction SilentlyContinue
     }
 
     if ($testResult) {
@@ -479,7 +470,7 @@ function Set-TargetResource {
     3. Expand-7ZipArchiveを呼び出してアーカイブをDestinationに展開する
     #>
 
-    $local:Guid = [System.Guid]::NewGuid().toString()
+    $local:PsDrive = $null
 
     # Checksumが指定されているが、ValidateがFalseの場合はエラー
     if ($PSBoundParameters.ContainsKey('Checksum') -and (-not $Validate)) {
@@ -488,21 +479,12 @@ function Set-TargetResource {
     }
 
     if ($Credential) {
-        try {
-            $null = New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential -ErrorAction Stop
-            if (-not (Test-Path -LiteralPath $Path -ErrorAction SilentlyContinue)) {
-                throw ('Could not access the file "{0}"' -f $Path)
-            }
-        }
-        catch {
-            Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
-            Write-Error -Exception $_.Exception
-            return
-        }
+        $local:PsDrive = Mount-PSDriveWithCredential -Root (Split-Path $Path -Parent) -Credential $Credential -ErrorAction Stop
     }
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction SilentlyContinue)) {
         Write-Error "The path $Path does not exist or is not a file"
+        UnMount-PSDrive -Name $local:PsDrive.Name -ErrorAction SilentlyContinue
         return
     }
 
@@ -520,7 +502,7 @@ function Set-TargetResource {
         Write-Error -Exception $_.Exception
     }
     finally {
-        Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
+        UnMount-PSDrive -Name $local:PsDrive.Name -ErrorAction SilentlyContinue
     }
 
 } # end of Set-TargetResource
@@ -837,6 +819,60 @@ function Expand-7ZipArchive {
     catch {
         Write-Error -Exception $_.Exception
         return
+    }
+}
+
+function Mount-PSDriveWithCredential {
+    [CmdletBinding()]
+    [OutputType([System.Management.Automation.PSDriveInfo])]
+    param (
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Root,
+
+        [Parameter(Mandatory)]
+        [System.Management.Automation.PSCredential]
+        [System.Management.Automation.Credential()]
+        $Credential,
+
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Name
+    )
+
+    if (-not $Name) {
+        $Name = [guid]::NewGuid().toString()
+    }
+
+    try {
+        New-PSDrive -Name $Name -Root $Root -PSProvider FileSystem -Credential $Credential -ErrorAction Stop
+        if (-not (Test-Path -LiteralPath $Root -ErrorAction SilentlyContinue)) {
+            throw ('Could not access to "{0}"' -f $Root)
+        }
+    }
+    catch {
+        UnMount-PSDrive -Name $Name -ErrorAction SilentlyContinue
+        Write-Error -Exception $_.Exception
+        return
+    }
+}
+
+
+function UnMount-PSDrive {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseApprovedVerbs", "")]
+    [CmdletBinding()]
+    [OutputType([void])]
+    param (
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [AllowEmptyString()]
+        [string]
+        $Name
+    )
+
+    if (![string]::IsNullOrWhiteSpace($Name)) {
+        Remove-PSDrive -Name $Name
     }
 }
 

@@ -118,8 +118,8 @@ InModuleScope 'x7ZipArchive' {
                 Mock Test-ArchiveExistsAtDestination { return $false } -ParameterFilter { $Checksum -eq 'Size' }
                 Mock Test-ArchiveExistsAtDestination { return $false }
 
-                Mock New-PSDrive { } -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) }
-                Mock Remove-PSDrive { }
+                Mock Mount-PSDriveWithCredential { @{Name = 'drivename' } } -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) }
+                Mock UnMount-PSDrive { }
 
                 BeforeAll {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
@@ -173,8 +173,8 @@ InModuleScope 'x7ZipArchive' {
                         $result = Get-TargetResource @getParam
 
                         Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Scope It
-                        Assert-MockCalled -CommandName 'New-PSDrive' -Times 1 -Exactly -Scope It
-                        Assert-MockCalled -CommandName 'Remove-PSDrive' -Times 1 -Exactly -Scope It
+                        Assert-MockCalled -CommandName 'Mount-PSDriveWithCredential' -Times 1 -Exactly -Scope It
+                        Assert-MockCalled -CommandName 'UnMount-PSDrive' -Times 1 -Exactly -Scope It
 
                         $result.Ensure | Should -Be 'Present'
                         $result.Path | Should -Be $PathOfArchive
@@ -189,10 +189,9 @@ InModuleScope 'x7ZipArchive' {
                             Credential  = $script:TestCredential
                         }
 
-                        { Get-TargetResource @getParam } | Should -Throw ('Could not access the file "{0}"' -f $PathNotExist)
+                        { Get-TargetResource @getParam } | Should -Throw ('The path {0} does not exist or is not a file' -f $PathNotExist)
 
-                        Assert-MockCalled -CommandName 'New-PSDrive' -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) } -Times 1 -Exactly -Scope It
-                        Assert-MockCalled -CommandName 'Remove-PSDrive' -Times 1 -Exactly -Scope It
+                        Assert-MockCalled -CommandName 'Mount-PSDriveWithCredential' -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) } -Times 1 -Exactly -Scope It
                         Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -Times 0 -Scope It
                     }
                 }
@@ -888,6 +887,73 @@ InModuleScope 'x7ZipArchive' {
         }
     }
     #endregion Tests for Get-CRC32Hash
+
+    #region Tests for Mount-PSDriveWithCredential
+    Describe 'x7ZipArchive/Mount-PSDriveWithCredential' -Tag 'Unit' {
+
+        Mock New-PSDrive { return @{Name = $Name } }
+        Mock UnMount-PSDrive { }
+
+        BeforeAll {
+            $ErrorActionPreference = 'Stop'
+        }
+
+        It 'Nameが指定されていない場合、適当なGuidでPSDriveをマウントする' {
+            Mock Test-Path { $true }
+
+            $Ret = Mount-PSDriveWithCredential -Root 'something' -Credential $script:TestCredential
+            $Ret.Name | Should -Match '([A-Fa-f0-9]{8})\-([A-Fa-f0-9]{4})\-([A-Fa-f0-9]{4})\-([A-Fa-f0-9]{4})\-([A-Fa-f0-9]{12})'
+            Assert-MockCalled -CommandName New-PSDrive -Times 1 -Scope It -Exactly
+            Assert-MockCalled -CommandName Test-Path -Times 1 -Scope It -Exactly
+            Assert-MockCalled -CommandName UnMount-PSDrive -Times 0 -Scope It -Exactly
+        }
+
+        It 'Nameが指定されている場合、その名前でPSDriveをマウントする' {
+            Mock Test-Path { $true }
+
+            $Ret = Mount-PSDriveWithCredential -Root 'something' -Name 'drivename' -Credential $script:TestCredential
+            $Ret.Name | Should -Be 'drivename'
+            Assert-MockCalled -CommandName New-PSDrive -Times 1 -Scope It -Exactly
+            Assert-MockCalled -CommandName Test-Path -Times 1 -Scope It -Exactly
+            Assert-MockCalled -CommandName UnMount-PSDrive -Times 0 -Scope It -Exactly
+        }
+
+        It '処理中に例外が発生した場合、UnMount-PSDriveを呼び出してから終了' {
+            Mock Test-Path { throw 'Exception' }
+
+            { Mount-PSDriveWithCredential -Root 'something' -Credential $script:TestCredential } | Should -Throw 'Exception'
+            Assert-MockCalled -CommandName New-PSDrive -Times 1 -Scope It -Exactly
+            Assert-MockCalled -CommandName Test-Path -Times 1 -Scope It -Exactly
+            Assert-MockCalled -CommandName UnMount-PSDrive -Times 1 -Scope It -Exactly
+        }
+    }
+    #endregion Tests for Mount-PSDriveWithCredential
+
+    #region Tests for UnMount-PSDrive
+    Describe 'x7ZipArchive/UnMount-PSDrive' -Tag 'Unit' {
+
+        Mock Remove-PSDrive { }
+
+        BeforeAll {
+            $ErrorActionPreference = 'Stop'
+        }
+
+        It 'Nameが$nullの場合、何もせず終了' {
+            { UnMount-PSDrive -Name $null } | Should -Not -Throw
+            Assert-MockCalled -CommandName Remove-PSDrive -Times 0 -Scope It -Exactly
+        }
+
+        It 'Nameが空文字列の場合、何もせず終了' {
+            { UnMount-PSDrive -Name ([string]::Empty) } | Should -Not -Throw
+            Assert-MockCalled -CommandName Remove-PSDrive -Times 0 -Scope It -Exactly
+        }
+
+        It 'Nameが指定されている場合、Remove-PSDriveを実行' {
+            { UnMount-PSDrive -Name 'foo' } | Should -Not -Throw
+            Assert-MockCalled -CommandName Remove-PSDrive -Times 1 -Scope It -Exactly
+        }
+    }
+    #endregion Tests for UnMount-PSDrive
 
 }
 #endregion End Testing
