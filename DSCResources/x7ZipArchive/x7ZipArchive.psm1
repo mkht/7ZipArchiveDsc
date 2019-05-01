@@ -327,10 +327,15 @@ function Get-TargetResource {
     }
 
     if ($Credential) {
-        $null = New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential
-        if (-not (Test-Path -LiteralPath $Path -ErrorAction SilentlyContinue)) {
+        try {
+            $null = New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential -ErrorAction Stop
+            if (-not (Test-Path -LiteralPath $Path -ErrorAction SilentlyContinue)) {
+                throw ('Could not access the file "{0}"' -f $Path)
+            }
+        }
+        catch {
             Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
-            Write-Error ('Could not access the file "{0}"' -f $Path)
+            Write-Error -Exception $_.Exception
             return
         }
     }
@@ -483,10 +488,15 @@ function Set-TargetResource {
     }
 
     if ($Credential) {
-        $null = New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential
-        if (-not (Test-Path -LiteralPath $Path -ErrorAction SilentlyContinue)) {
+        try {
+            $null = New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential -ErrorAction Stop
+            if (-not (Test-Path -LiteralPath $Path -ErrorAction SilentlyContinue)) {
+                throw ('Could not access the file "{0}"' -f $Path)
+            }
+        }
+        catch {
             Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
-            Write-Error ('Could not access the file "{0}"' -f $Path)
+            Write-Error -Exception $_.Exception
             return
         }
     }
