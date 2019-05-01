@@ -199,10 +199,10 @@ class Archive {
 
         if ($IgnoreRoot) {
             try {
-                Get-ChildItem -LiteralPath $Destination -Recurse | Move-Item -Destination $FinalDestination -Force -ErrorAction Stop
+                Get-ChildItem -LiteralPath $Destination -Recurse -Force | Move-Item -Destination $FinalDestination -Force -ErrorAction Stop
             }
             finally {
-                Remove-Item -LiteralPath (Join-Path $FinalDestination $Guid) -Force -Recurse
+                Remove-Item -LiteralPath (Join-Path $FinalDestination $Guid) -Force -Recurse -ErrorAction SilentlyContinue
             }
         }
 
