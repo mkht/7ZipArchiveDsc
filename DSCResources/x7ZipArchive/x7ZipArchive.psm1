@@ -326,9 +326,9 @@ function Get-TargetResource {
         return
     }
 
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction SilentlyContinue)) {
         if ($Credential) {
-            New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential
+            $null = New-PSDrive -Name $local:Guid -Root (Split-Path $Path -Parent) -PSProvider FileSystem -Credential $Credential
             if (-not (Test-Path -LiteralPath $Path)) {
                 Remove-PSDrive -Name $local:Guid -ErrorAction SilentlyContinue
                 Write-Error ('Could not access the file "{0}"' -f $Path)
