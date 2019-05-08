@@ -1,0 +1,17 @@
+#---------------------------#
+#  AzureDevOps CI pipeline  #
+#---------------------------#
+trigger:
+- mnaster
+- dev
+
+pool:
+    vmImage: 'VS2017-Win2016'
+
+steps:
+- task: Pester
+  displayName: Pester-Test
+  inputs:
+     scriptFolder: $(System.DefaultWorkingDirectory)\*
+     resultsFile: $(System.DefaultWorkingDirectory)\Test-Pester.XML
+     run32Bit: False
