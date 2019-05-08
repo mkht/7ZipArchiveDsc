@@ -1,4 +1,7 @@
 # 7ZipArchiveDsc
+
+[![Build Status](https://mkht.visualstudio.com/7ZipArchiveDsc/_apis/build/status/mkht.7ZipArchiveDsc?branchName=master)](https://mkht.visualstudio.com/7ZipArchiveDsc/_build/latest?definitionId=6&branchName=master)
+
 PowerShell DSC Resource to expand an archive file to a specific path. 
 
 ## Install
