@@ -54,7 +54,7 @@ See [Examples](/Examples).
   - Initial public release
 
 ## Licenses
-https://github.com/mkht/7ZipArchiveDsc/blob/master/LICENSE
+[MIT License](/LICENSE)
 
 ## Libraries
 This software uses below softwares and libraries.
