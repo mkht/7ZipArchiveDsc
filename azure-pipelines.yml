@@ -23,7 +23,7 @@ steps:
   displayName: Start WinRM
 
 - task: Pester@8
-  displayName: Pester-Test
+  displayName: Pester Unit Test
   inputs:
      scriptFolder: $(System.DefaultWorkingDirectory)\*
      resultsFile: $(System.DefaultWorkingDirectory)\Test-Pester.XML
