@@ -9,7 +9,7 @@ Param (
 
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
-    [string[]]$ExcludeFiles = @('.gitignore', '.vsts-ci.yml'),
+    [string[]]$ExcludeFiles = @('.gitignore', 'azure-pipelines.yml'),
 
     [switch]$WhatIf
 )
