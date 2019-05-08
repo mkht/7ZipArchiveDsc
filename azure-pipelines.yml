@@ -27,4 +27,5 @@ steps:
   inputs:
      scriptFolder: $(System.DefaultWorkingDirectory)\*
      resultsFile: $(System.DefaultWorkingDirectory)\Test-Pester.XML
+     tag: Unit
      run32Bit: False
