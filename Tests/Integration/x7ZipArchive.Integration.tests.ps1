@@ -95,8 +95,8 @@ try {
                 Test-Path (Join-Path $TestDrive "$script:TestGuid\Destination") | Should -Be $true
                 $files = Get-ChildItem -LiteralPath (Join-Path $TestDrive "$script:TestGuid\Destination") -Recurse -Force
                 $files | Should -HaveCount 4
-                $files | Where-Object {$_.ItemType -eq 'File'} | Should -HaveCount 3
-                $files | Where-Object {$_.ItemType -eq 'Directory'} | Should -HaveCount 1
+                $files | Where-Object { -not $_.PsIsContainer } | Should -HaveCount 3
+                $files | Where-Object { $_.PsIsContainer } | Should -HaveCount 1
             }
         }
 
@@ -160,8 +160,8 @@ try {
                 Test-Path (Join-Path $TestDrive "$script:TestGuid\Destination") | Should -Be $true
                 $files = Get-ChildItem -LiteralPath (Join-Path $TestDrive "$script:TestGuid\Destination") -Recurse -Force
                 $files | Should -HaveCount 4
-                $files | Where-Object {$_.ItemType -eq 'File'} | Should -HaveCount 3
-                $files | Where-Object {$_.ItemType -eq 'Directory'} | Should -HaveCount 1
+                $files | Where-Object { -not $_.PsIsContainer } | Should -HaveCount 3
+                $files | Where-Object { $_.PsIsContainer } | Should -HaveCount 1
             }
         }
 
@@ -171,11 +171,12 @@ try {
             $config = Join-Path $PSScriptRoot '03_ZipExpand_Checksum_ModifiedDate.config.ps1'
 
             BeforeAll {
-                if (-not (Test-Path (Join-Path $TestDrive "$script:TestGuid\Destination"))) {
-                    New-Item (Join-Path $TestDrive "$script:TestGuid\Destination") -ItemType Directory -Force > $null
+                $Destination = (Join-Path $TestDrive "$script:TestGuid\Destination")
+                if (-not (Test-Path $Destination)) {
+                    New-Item $Destination -ItemType Directory -Force > $null
                 }
                 '00000' | Out-File (Join-Path $Destination 'Hello Archive.txt')
-                Set-ItemProperty (Join-Path $Destination 'Hello Archive.txt') -Name LastWriteTime -Value '2018-08-10 00:02:18'
+                Set-ItemProperty (Join-Path $Destination 'Hello Archive.txt') -Name LastWriteTime -Value ([datetime]::Now)
             }
 
             AfterAll {
@@ -232,7 +233,7 @@ try {
             It 'Should be expanded archive to destination' {
                 Test-Path (Join-Path $TestDrive "$script:TestGuid\Destination") | Should -Be $true
                 $item = Get-Item -Path (Join-Path $TestDrive "$script:TestGuid\Destination\Hello Archive.txt")
-                $item.LastWriteTime.ToString() | Should -Be '2018-08-09 00:02:18'
+                $item.LastWriteTime.ToString('s') | Should -Be '2018-08-09T00:02:18'
                 Get-Content $item -Raw | Should -Be 'Hello Archive!'
             }
         }
@@ -240,14 +241,14 @@ try {
 
         Context 'ZIPファイルの展開 (Validate, Checksum="Size")' {
 
-            $config = Join-Path $PSScriptRoot '03_ZipExpand_Checksum_ModifiedDate.config.ps1'
+            $config = Join-Path $PSScriptRoot '04_ZipExpand_Checksum_Size.config.ps1'
 
             BeforeAll {
-                if (-not (Test-Path (Join-Path $TestDrive "$script:TestGuid\Destination"))) {
-                    New-Item (Join-Path $TestDrive "$script:TestGuid\Destination") -ItemType Directory -Force > $null
+                $Destination = (Join-Path $TestDrive "$script:TestGuid\Destination")
+                if (-not (Test-Path $Destination)) {
+                    New-Item $Destination -ItemType Directory -Force > $null
                 }
-                '00000' | Out-File (Join-Path $Destination 'Hello Archive.txt')
-                Set-ItemProperty (Join-Path $Destination 'Hello Archive.txt') -Name LastWriteTime -Value '2018-08-09 00:02:18'
+                '0000000000' | Out-File (Join-Path $Destination 'Hello Archive.txt')
             }
 
             AfterAll {
@@ -308,6 +309,79 @@ try {
             }
         }
 
+        Context 'ZIPファイルの展開 (Clean)' {
+
+            $config = Join-Path $PSScriptRoot '06_ZipExpand_Clean.config.ps1'
+
+            BeforeAll {
+                $Destination = (Join-Path $TestDrive "$script:TestGuid\Destination")
+                if (-not (Test-Path $Destination)) {
+                    New-Item $Destination -ItemType Directory -Force > $null
+                }
+                '00000' | Out-File (Join-Path $Destination 'something.txt')
+            }
+
+            AfterAll {
+                if (Test-Path (Join-Path $TestDrive "$script:TestGuid\Destination")) {
+                    Remove-Item (Join-Path $TestDrive "$script:TestGuid\Destination") -Recurse -Force
+                }
+            }
+
+            It 'Should compile and apply the MOF without throwing' {
+                {
+                    . $config
+
+                    $configurationParameters = @{
+                        OutputPath        = $TestDrive
+                        ConfigurationData = $ConfigurationData
+                    }
+
+                    & $configurationName @configurationParameters
+
+                    $startDscConfigurationParameters = @{
+                        Path         = $TestDrive
+                        ComputerName = 'localhost'
+                        Wait         = $true
+                        Verbose      = $script:ShowDscVerboseMsg
+                        Force        = $true
+                        ErrorAction  = 'Stop'
+                    }
+
+                    Start-DscConfiguration @startDscConfigurationParameters
+                } | Should -Not -Throw
+            }
+
+            It 'Should be able to call Get-DscConfiguration without throwing' {
+                {
+                    $script:currentConfiguration = Get-DscConfiguration -Verbose:$script:ShowDscVerboseMsg -ErrorAction Stop
+                } | Should -Not -Throw
+            }
+
+            It 'Should have set the resource and all the parameters should match' {
+                $resourceCurrentState = $script:currentConfiguration | Where-Object -FilterScript {
+                    $_.ConfigurationName -eq $configurationName `
+                        -and $_.ResourceId -eq "[x7ZipArchive]Integration_Test"
+                }
+
+                $resourceCurrentState.Ensure | Should -Be 'Present'
+                $resourceCurrentState.Path | Should -Be (Join-Path $TestDrive "$script:TestGuid\TestValid.zip")
+                $resourceCurrentState.Destination | Should -Be (Join-Path $TestDrive "$script:TestGuid\Destination")
+            }
+
+            It 'Should return $true when Test-DscConfiguration is run' {
+                Test-DscConfiguration -Verbose:$script:ShowDscVerboseMsg | Should -Be $true
+            }
+
+            It 'Should be expanded archive to destination' {
+                Test-Path (Join-Path $TestDrive "$script:TestGuid\Destination") | Should -Be $true
+                $item = Get-Item -Path (Join-Path $TestDrive "$script:TestGuid\Destination\Hello Archive.txt")
+                Get-Content $item -Raw | Should -Be 'Hello Archive!'
+            }
+
+            It 'Should be removed existent files in the destination' {
+                Test-Path -Path (Join-Path $TestDrive "$script:TestGuid\Destination\something.txt") | Should -Be $false
+            }
+        }
 
         Context '7zファイルの展開' {
 
@@ -368,8 +442,8 @@ try {
                 Test-Path (Join-Path $TestDrive "$script:TestGuid\Destination") | Should -Be $true
                 $files = Get-ChildItem -LiteralPath (Join-Path $TestDrive "$script:TestGuid\Destination") -Recurse -Force
                 $files | Should -HaveCount 5
-                $files | Where-Object {$_.ItemType -eq 'File'} | Should -HaveCount 3
-                $files | Where-Object {$_.ItemType -eq 'Directory'} | Should -HaveCount 2
+                $files | Where-Object { -not $_.PsIsContainer } | Should -HaveCount 3
+                $files | Where-Object { $_.PsIsContainer } | Should -HaveCount 2
             }
         }
     }

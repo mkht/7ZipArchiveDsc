@@ -1,68 +1,69 @@
 # 7ZipArchiveDsc
 
+[![Build Status](https://mkht.visualstudio.com/7ZipArchiveDsc/_apis/build/status/mkht.7ZipArchiveDsc?branchName=master)](https://mkht.visualstudio.com/7ZipArchiveDsc/_build/latest?definitionId=6&branchName=master)
 
-----
-## 実装作業の流れ
-実装はWIP Pull Requestフローで進めることとします
-https://qiita.com/numa08/items/b676e38e3dbabfd39d18
+PowerShell DSC Resource to expand an archive file to a specific path. 
 
-- このリポジトリの`master`ブランチをローカルにクローンします
-```
-git clone https://github.com/harmony-plus/7ZipArchiveDsc.git
-```
-
-- 作業用にトピックブランチ`dev`を切ります
-```
-git checkout -b dev
+## Install
+You can install the resource from [PowerShell Gallery](https://www.powershellgallery.com/packages/7ZipArchiveDsc/).
+```Powershell
+Install-Module -Name 7ZipArchiveDsc
 ```
 
-- 空のコミットを作ります  
-この空コミットは実装作業開始後すみやかに消してください
-```
-git commit --allow-empty -m '[WIP]First commit'
-```
+## Resources
+* **x7ZipArchive**
+DSC Resource to expand an archive file to a specific path.  
+This resource uses [7-Zip](https://www.7-zip.org/) utility for expand an archive. You can expand all type of the archives that is supported in 7-Zip.  
 
-- リモートにプッシュします
-```
-git push origin dev
-```
+## Properties
 
-- Pull Requestを作ります
-  + タイトルに`[WIP]`をつけてください
-  + ↓のほうにあるTask listをコピペしてタスクリストを作ってください
+### x7ZipArchive
++ **[string] Path** (key):
+    + The path to the archive file that should be expanded.
 
-- `dev`ブランチ上で実装作業を進めます
-  + 適度な粒度でコミットすることを心がけてください
++ **[string] Destination** (key):
+    + The path where the specified archive file should be expanded.
 
-- 実装・テスト・レビューが完了したら`master`ブランチにマージします
++ **[bool] Validate** (Write):
+    + Specifies whether or not to validate that a file at the destination with the same name as a file in the archive actually matches that corresponding file in the archive by the specified checksum method.
+    + The default is `False`
 
-### Task List
-- [ ] x7ZipArchiveリソースの実装  
-- [ ] ドキュメンテーション整備 in README.md  
-- [ ] テストコード整備・追加（必要に応じて）  
-    ヘルパ関数などを追加した場合は必ずテストコードも追加すること  
-- [ ] 単体テスト通過確認  
-- [ ] 統合テスト通過確認  
-- [ ] テスト自動化実装  
-    VSTSのYAML Buildで実装すること  
-    https://docs.microsoft.com/en-us/vsts/pipelines/build/yaml?view=vsts
++ **[string] Checksum** (Write):
+    + The Checksum method to use to validate whether or not a file at the destination with the same name as a file in the archive actually matches that corresponding file in the archive.
+    + An exception will be thrown if Checksum is specified while Validate is specified as false. 
+    + The default value is `ModifiedDate`. { ModifiedDate | Size | CRC32 }
 
++ **[bool] IgnoreRoot** (Write):
+    + When the IgnoreRoot is specified as true, this resource will expand files in the root directory of the archive to the destination.
+    + An exception will be thrown if the archive has multiple files or directories in the root. 
+    + The default is `False`
 
-----
-## テスト実行
++ **[bool] Clean** (Write):
+    + When the Clean is specified as true, this resource removes all files in the destination before expand.
+    + The default is `False`
 
-```PowerShell
-#テストモジュールのインストール
-Install-Module Pester -Force -SkipPublisherCheck -MinimumVersion '4.2.0'
-#テスト実行
-Invoke-Pester
-```
++ **[PSCredential] Credential** (Write):
+    + The credential for access to the archive on a remote source if needed.
 
 
-----
-## ライセンス
-7ZipArchiveDscモジュールは7-Zipライブラリを使用しています
+## Usage
+See [Examples](/Examples).
+
+## Changelog
+### 1.0.0
+  - Initial public release
+
+## Licenses
+https://github.com/mkht/7ZipArchiveDsc/blob/master/LICENSE
+
+## Libraries
+This software uses below softwares and libraries.
 
 + [7-Zip](https://www.7-zip.org/)
     - Copyright (C) Igor Pavlov.
-    - Licensed under the **GNU LGPL** and **BSD 3-clause License**.
+    - Licensed under the **GNU LGPL** and **BSD 3-clause License**.  
+      https://www.7-zip.org/license.txt
+
++ [Crc32.NET](https://github.com/force-net/Crc32.NET)
+    - Copyright (c) force
+    - Licensed under the **[MIT License](https://github.com/force-net/Crc32.NET/blob/v1.2.0/LICENSE)**.
