@@ -50,11 +50,11 @@ This resource uses [7-Zip](https://www.7-zip.org/) utility for expand an archive
 See [Examples](/Examples).
 
 ## Changelog
-### Not Released Yet
-
+### 1.0.0
+  - Initial public release
 
 ## Licenses
-The license of this software is not specified yet.
+https://github.com/mkht/7ZipArchiveDsc/blob/master/LICENSE
 
 ## Libraries
 This software uses below softwares and libraries.
