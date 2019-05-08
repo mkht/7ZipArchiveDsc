@@ -5,10 +5,23 @@ trigger:
 - master
 - dev
 
+variables:
+  GIT_CONFIG_PARAMETERS: "'core.autocrlf=false'"
+  POWERSHELL_TELEMETRY_OPTOUT: 1
+
 pool:
-    vmImage: 'VS2017-Win2016'
+  vmImage: 'VS2017-Win2016'
 
 steps:
+- powershell: |
+    Get-ChildItem -Path env:
+  displayName: Capture environment
+
+- powershell: |
+    Enable-PSRemoting -Force -SkipNetworkProfileCheck
+    Start-Service winrm
+  displayName: Start WinRM
+
 - task: Pester@8
   displayName: Pester-Test
   inputs:
