@@ -1,4 +1,5 @@
 ﻿#Requires -Version 5
+using namespace System.IO;
 
 $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
 $script:Crc16 = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\CRC16\CRC16.cs'
@@ -23,7 +24,7 @@ class Archive {
     [string] $Type
     [int] $Files = 0
     [int] $Folders = 0
-    [System.IO.FileInfo] $FileInfo
+    [FileInfo] $FileInfo
     [Object[]] $FileList
 
     Archive([string]$Path) {
@@ -41,7 +42,7 @@ class Archive {
         if ([int]::TryParse($info.Folders, [ref]$null)) {
             $this.Folders = [int]::Parse($info.Folders)
         }
-        $this.FileInfo = [System.IO.FileInfo]::new($Path)
+        $this.FileInfo = [FileInfo]::new($Path)
         $this.FileList = [Archive]::GetFileList($Path)
     }
 
@@ -52,7 +53,7 @@ class Archive {
     static [string[]]TestArchive([string]$Path) {
         $NewLine = [System.Environment]::NewLine
         if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-            throw [System.IO.FileNotFoundException]::new()
+            throw [FileNotFoundException]::new()
         }
 
         # Test integrity of archive
@@ -249,11 +250,11 @@ function Get-CRC16Hash {
 
     Process {
         if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-            Write-Error -Exception ([System.IO.FileNotFoundException]::new('The file is not exist.'))
+            Write-Error -Exception ([FileNotFoundException]::new('The file is not exist.'))
         }
         else {
             try {
-                [System.IO.FileStream]$stream = [System.IO.File]::OpenRead($Path)
+                [FileStream]$stream = [File]::Open($Path, [FileMode]::Open, [FileAccess]::Read, ([FileShare]::ReadWrite + [FileShare]::Delete))
                 [byte[]]$hash = $crc16.ComputeHash($stream);
                 [System.BitConverter]::ToString($hash).Replace('-', [string]::Empty)
             }
@@ -298,13 +299,13 @@ function Get-CRC32Hash {
 
     Process {
         if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-            Write-Error -Exception ([System.IO.FileNotFoundException]::new('The file is not exist.'))
+            Write-Error -Exception ([FileNotFoundException]::new('The file is not exist.'))
             return
         }
 
         $crc32 = [Force.Crc32.Crc32Algorithm]::new()
         try {
-            [System.IO.FileStream]$stream = [System.IO.File]::OpenRead($Path)
+            [FileStream]$stream = [File]::Open($Path, [FileMode]::Open, [FileAccess]::Read, ([FileShare]::ReadWrite + [FileShare]::Delete))
             [byte[]]$hash = $crc32.ComputeHash($stream)
             [System.BitConverter]::ToString($hash).Replace('-', [string]::Empty)
         }
