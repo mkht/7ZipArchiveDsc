@@ -712,26 +712,26 @@ InModuleScope 'x7ZipArchive' {
                     $Result | Should -Be $true
                 }
 
-                It 'ChecksumにCRC32が指定されている場合で、展開先フォルダ内のファイルとアーカイブ内のファイルのCRC32が一致しない場合はFalseを返す' {
+                It 'ChecksumにCRCが指定されている場合で、展開先フォルダ内のファイルとアーカイブ内のファイルのCRCが一致しない場合はFalseを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'SingleFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     '010' | Out-File (Join-Path $Destination '001.txt') -Encoding ascii -NoNewline
 
-                    $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'CRC32'
+                    $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'CRC'
 
                     Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $false
                 }
 
-                It 'ChecksumにCRC32が指定されている場合で、展開先フォルダ内のファイルとアーカイブ内のファイルのCRC32が一致する場合はTrueを返す' {
+                It 'ChecksumにCRCが指定されている場合で、展開先フォルダ内のファイルとアーカイブ内のファイルのCRCが一致する場合はTrueを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'SingleFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     '001' | Out-File (Join-Path $Destination '001.txt') -Encoding ascii -NoNewline
 
-                    $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'CRC32'
+                    $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'CRC'
 
                     Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
