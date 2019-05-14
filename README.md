@@ -53,6 +53,7 @@ See [Examples](/Examples).
 ### Unreleased
   - Acceptable values of `Checksum` has been changed to `ModifiedDate`, `Size` and `CRC` (`CRC32` is remained for backwards compatibility, but will soon deprecated.) 
   - Fixed issue that the CRC hash of LZH archive is not calculated properly.
+  - Increased performance.
   - Removed unnecessary files.
 
 ### 1.0.0
