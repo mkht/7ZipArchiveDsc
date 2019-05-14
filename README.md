@@ -31,7 +31,7 @@ This resource uses [7-Zip](https://www.7-zip.org/) utility for expand an archive
 + **[string] Checksum** (Write):
     + The Checksum method to use to validate whether or not a file at the destination with the same name as a file in the archive actually matches that corresponding file in the archive.
     + An exception will be thrown if Checksum is specified while Validate is specified as false. 
-    + The default value is `ModifiedDate`. { ModifiedDate | Size | CRC32 }
+    + The default value is `ModifiedDate`. { ModifiedDate | Size | CRC }
 
 + **[bool] IgnoreRoot** (Write):
     + When the IgnoreRoot is specified as true, this resource will expand files in the root directory of the archive to the destination.
@@ -50,6 +50,11 @@ This resource uses [7-Zip](https://www.7-zip.org/) utility for expand an archive
 See [Examples](/Examples).
 
 ## Changelog
+### Unreleased
+  - Acceptable values of `Checksum` has been changed to `ModifiedDate`, `Size` and `CRC` (`CRC32` is remained for backwards compatibility, but will soon deprecated.) 
+  - Fixed issue that the CRC hash of LZH archive is not calculated properly.
+  - Removed unnecessary files.
+
 ### 1.0.0
   - Initial public release
 

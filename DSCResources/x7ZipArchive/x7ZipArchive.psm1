@@ -1,7 +1,12 @@
 ﻿#Requires -Version 5
 
 $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
+$script:Crc16 = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\CRC16\CRC16.cs'
 $script:Crc32NET = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\Crc32.NET\Crc32.NET.dll'
+
+# Class CRC16
+$crc16 = Get-Content -LiteralPath $script:Crc16 -Raw
+Add-Type -TypeDefinition $crc16 -Language CSharp
 
 Enum ExitCode {
     #https://sevenzip.osdn.jp/chm/cmdline/exit_codes.htm
@@ -219,6 +224,52 @@ class Archive {
     }
 }
 
+
+<#
+.SYNOPSIS
+ファイルのCRC16ハッシュを計算する関数
+
+.PARAMETER Path
+ハッシュを計算するファイルのパスを指定します
+
+.EXAMPLE
+Get-CRC16Hash -Path C:\file.txt
+#>
+function Get-CRC16Hash {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param (
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName, Position = 0)]
+        [string]$Path
+    )
+
+    Begin {
+        $crc16 = [CRC16]::new()
+    }
+
+    Process {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+            Write-Error -Exception ([System.IO.FileNotFoundException]::new('The file is not exist.'))
+        }
+        else {
+            try {
+                [System.IO.FileStream]$stream = [System.IO.File]::OpenRead($Path)
+                [byte[]]$hash = $crc16.ComputeHash($stream);
+                [System.BitConverter]::ToString($hash).Replace('-', [string]::Empty)
+            }
+            catch {
+                Write-Error -Exception $_.Exception
+            }
+            finally {
+                if ($null -ne $stream) {
+                    $stream.Dispose()
+                }
+            }
+        }
+    }
+}
+
+
 <#
 .SYNOPSIS
 ファイルのCRC32ハッシュを計算する関数
@@ -291,7 +342,6 @@ function Get-TargetResource {
         $Validate = $false,
 
         [Parameter()]
-        [ValidateSet('ModifiedDate', 'Size', 'CRC32')]
         [string]
         $Checksum = 'ModifiedDate',
 
@@ -344,6 +394,7 @@ function Get-TargetResource {
     }
 
     if ($Validate) {
+        if ($Checksum -eq 'CRC32') { $Checksum = 'CRC' }
         $testParam.Checksum = $Checksum
     }
 
@@ -396,7 +447,7 @@ function Test-TargetResource {
         $Validate = $false,
 
         [Parameter()]
-        [ValidateSet('ModifiedDate', 'Size', 'CRC32')]
+        [ValidateSet('ModifiedDate', 'Size', 'CRC', 'CRC32')]
         [string]
         $Checksum = 'ModifiedDate',
 
@@ -445,7 +496,7 @@ function Set-TargetResource {
         $Validate = $false,
 
         [Parameter()]
-        [ValidateSet('ModifiedDate', 'Size', 'CRC32')]
+        [ValidateSet('ModifiedDate', 'Size', 'CRC', 'CRC32')]
         [string]
         $Checksum = 'ModifiedDate',
 
@@ -534,7 +585,37 @@ function Get-7ZipArchiveFileList {
         $Archive
     )
 
-    # $Archive.GetFileList() メソッドのラッパー関数
+    (Get-7ZipArchive @PSBoundParameters).FileList
+}
+
+
+<#
+.SYNOPSIS
+アーカイブファイルの情報を取得する関数
+
+.PARAMETER Path
+アーカイブファイルのパスを指定します
+アーカイブは7Zipで扱える形式である必要があります
+
+.EXAMPLE
+PS> Get-7ZipArchive -Path C:\Test.zip
+
+#>
+function Get-7ZipArchive {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true, ParameterSetName = 'Path')]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Path,
+
+        [Parameter(Mandatory = $true, DontShow = $true, ParameterSetName = 'Class')]
+        [ValidateNotNullOrEmpty()]
+        [Archive]
+        $Archive
+    )
+
+    # $Archiveクラスのインスタンスを返すラッパー関数
 
     if ($PSCmdlet.ParameterSetName -eq 'Path') {
         try {
@@ -546,8 +627,7 @@ function Get-7ZipArchiveFileList {
         }
     }
 
-    $Archive.GetFileList()
-
+    $Archive
 }
 
 
@@ -568,7 +648,7 @@ IgnoreRootが指定された場合、アーカイブ内のルートフォルダ�
 Checksumを指定しない場合、ファイル名のみをチェックします
 Checksumに"ModifiedDate"を指定した場合、ファイル名に加えてファイルの更新日時が一致するかチェックします
 Checksumに"Size"を指定した場合、ファイル名に加えてファイルサイズが一致するかチェックします
-Checksumに"CRC32"を指定した場合、ファイル名に加えてCRC32ハッシュが一致するかチェックします
+Checksumに"CRC"を指定した場合、ファイル名に加えてCRCハッシュが一致するかチェックします
 
 .EXAMPLE
 PS> Test-ArchiveExistsAtDestination -Path C:\Test.zip -Destination C:\Dest
@@ -599,7 +679,7 @@ function Test-ArchiveExistsAtDestination {
         $Clean,
 
         [Parameter()]
-        [ValidateSet('ModifiedDate', 'Size', 'CRC32')]
+        [ValidateSet('ModifiedDate', 'Size', 'CRC')]
         [string]
         $Checksum
     )
@@ -611,7 +691,7 @@ function Test-ArchiveExistsAtDestination {
         3-1. Checksumが指定されていない場合はファイル/フォルダ名が一致していればOKとする
         3-2. ChecksumにModifiedDateが指定された場合は3-1に加えてファイルの更新日時が一致しているか確認
         3-3. ChecksumにSizeが指定された場合は3-1に加えてファイルサイズが一致しているか確認
-        3-3. ChecksumにCRC32が指定された場合は3-1に加えてCRC32ハッシュが一致しているか確認
+        3-3. ChecksumにCRCが指定された場合は3-1に加えてCRCハッシュが一致しているか確認
     4. アーカイブ内のファイル/フォルダ全てがDestination内に存在していればTrueを、一つでも存在しないファイルがあればFalseを返す
     #>
 
@@ -627,18 +707,18 @@ function Test-ArchiveExistsAtDestination {
         return $false
     }
 
-    $fileList = Get-7ZipArchiveFileList -Path $Path
+    $archive = Get-7ZipArchive -Path $Path
 
     if ($Clean) {
         $ExistFileCount = @(Get-ChildItem -LiteralPath $Destination -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { -not $_.PsIsContainer }).Count
-        $ArchiveFileCount = @($fileList | Where-Object { $_.ItemType -ne 'Folder' }).Count
+        $ArchiveFileCount = @($archive.FileList | Where-Object { $_.ItemType -ne 'Folder' }).Count
         if ($ArchiveFileCount -ne $ExistFileCount) {
             Write-Verbose 'The number of destination files does not match the number of files in the archive'
             return $false
         }
     }
 
-    $rootDir = $fileList | Where-Object { $_.Path.Contains('\') } | ForEach-Object { ($_.Path -split '\\')[0] } | Select-Object -First 1
+    $rootDir = $archive.FileList | Where-Object { $_.Path.Contains('\') } | ForEach-Object { ($_.Path -split '\\')[0] } | Select-Object -First 1
     if ($IgnoreRoot -and (-not $rootDir)) {
         Write-Error -Exception ([System.InvalidOperationException]::new("Archive has no item or only one file in the root. You can't use IgnoreRoot option."))
         return
@@ -647,7 +727,7 @@ function Test-ArchiveExistsAtDestination {
     # Test the archive has multiple root or not
     if ($IgnoreRoot) {
         [bool]$HasMultipleRoot = $false
-        foreach ($Item in $fileList) {
+        foreach ($Item in $archive.FileList) {
             if (($Item.ItemType -eq 'Folder') -and ($Item.Path -ceq $rootDir)) {
                 # The item is Root dir
                 continue
@@ -669,7 +749,7 @@ function Test-ArchiveExistsAtDestination {
         }
     }
 
-    foreach ($Item in $fileList) {
+    foreach ($Item in $archive.FileList) {
         if ($IgnoreRoot) {
             $RelativePath = $Item.Path.Substring($rootDir.Length)
             if ($RelativePath.Length -eq '0') {
@@ -720,10 +800,16 @@ function Test-ArchiveExistsAtDestination {
                     }
                 }
             }
-            elseif ($Checksum -eq 'CRC32') {
+            elseif ($Checksum -eq 'CRC') {
                 if (-not $CurrentFileInfo.PsIsContainer) {
                     # Compare file hash
-                    $CurrentFileHash = Get-CRC32Hash -Path $CurrentFileInfo.FullName
+                    if ($archive.Type -eq 'lzh') {
+                        #LZH has CRC16 checksum
+                        $CurrentFileHash = Get-CRC16Hash -Path $CurrentFileInfo.FullName
+                    }
+                    else {
+                        $CurrentFileHash = Get-CRC32Hash -Path $CurrentFileInfo.FullName
+                    }
                     if ($CurrentFileHash -ne $Item.CRC) {
                         Write-Verbose ('The hash of "{0}" is not same.' -f $Item.Path)
                         Write-Verbose ('Exist:{0} / Archive:{1}' -f $CurrentFileHash, $Item.CRC)
