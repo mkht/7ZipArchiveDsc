@@ -1,4 +1,4 @@
-#Requires -Version 5
+﻿#Requires -Version 5
 using namespace System.IO;
 
 $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
@@ -273,6 +273,68 @@ class Archive {
     static [void]Extract([string]$Path, [string]$Destination, [securestring]$Password , [bool]$IgnoreRoot) {
         $archive = [Archive]::new($Path, $Password)
         $archive.Extract($Destination, $Password, $IgnoreRoot)
+    }
+
+    static [void]Compress([string[]]$Path, [string]$Destination) {
+        [Archive]::Compress($Path, $Destination, [string]::Empty, $null)
+    }
+
+    static [void]Compress([string[]]$Path, [string]$Destination, [string]$Type) {
+        [Archive]::Compress($Path, $Destination, $Type, $null)
+    }
+
+    static [void]Compress([string[]]$Path, [string]$Destination, [string]$Type, [securestring]$Password) {
+        $activityMessage = ('Compress archive: {0}' -f $Destination)
+        $statusMessage = "Compressing..."
+
+        $oldItem = $null
+        if (Test-Path $Destination -PathType Leaf) {
+            $item = Get-Item -LiteralPath $Destination
+            $tmpName = $item.BaseName + ( -join ((1..5) | % { Get-Random -input ([char[]]((48..57) + (65..90) + (97..122))) })) + $item.Extension
+            $oldItem = $item | Rename-Item -NewName $tmpName -Force -PassThru
+        }
+
+        Write-Verbose $activityMessage
+        [string]$TargetFiles = @($Path).ForEach( { "`"$_`"" }) -join ' '
+
+        [string[]]$CmdParam = ($script:7zExe, 'a', "`"$Destination`"", $TargetFiles, '-ba', '-y', '-ssw', '-spd', '-bsp1')
+        if ($Password) {
+            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
+            $pPwd = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+            $CmdParam += ('-p"{0}"' -f $pPwd)
+        }
+        if ($Type) {
+            $CmdParam += ('-t"{0}"' -f $Type)
+        }
+
+        try {
+            Invoke-Expression ($CmdParam -join ' ') | ForEach-Object -Process {
+                if ($_ -match '(\d+)\%') {
+                    $progress = $Matches.1
+                    if ([int]::TryParse($progress, [ref]$progress)) {
+                        Write-Progress -Activity $activityMessage -Status $statusMessage -PercentComplete $progress -CurrentOperation "$progress % completed."
+                    }
+                }
+            }
+        }
+        catch { }
+
+        $ExitCode = $LASTEXITCODE
+        if ($ExitCode -ne [ExitCode]::Success) {
+            if (($null -ne $oldItem) -and (Test-Path $oldItem -ErrorAction SilentlyContinue)) {
+                Remove-Item $Destination -ErrorAction SilentlyContinue
+                Move-Item $oldItem $Destination -Force
+            }
+            throw [System.InvalidOperationException]::new($Error[0].Exception.Message)
+        }
+        else {
+            if (($null -ne $oldItem) -and (Test-Path $oldItem -ErrorAction SilentlyContinue)) {
+                Remove-Item $oldItem -Force
+            }
+            Write-Progress -Activity $activityMessage -Status 'Compression complete.' -Completed
+        }
+
+        Write-Verbose 'Compression complete.'
     }
 }
 
@@ -1011,6 +1073,104 @@ function Expand-7ZipArchive {
     catch {
         Write-Error -Exception $_.Exception
         return
+    }
+}
+
+
+<#
+.SYNOPSIS
+アーカイブを作成する関数
+
+.PARAMETER Path
+圧縮したいファイルのリスト
+
+.PARAMETER Destination
+アーカイブファイルの出力先
+出力先に同名のファイルが存在する場合は、確認なしで上書きされることに注意してください
+
+.PARAMETER Password
+アーカイブのパスワード
+
+.PARAMETER Type
+アーカイブの形式
+サポートされている値：'7z', 'zip', 'bzip2', 'gzip', 'tar', 'wim', 'xz'
+指定しない場合、出力先ファイルの拡張子から自動判別します。
+
+.EXAMPLE
+$pwd = Read-Host -AsSecureString
+Get-Item * | Compress-7ZipArchive -Destination C:\Archive.7z -Password $pwd
+
+#>
+function Compress-7ZipArchive {
+    [CmdletBinding(DefaultParameterSetName = 'Path')]
+    param (
+        [Parameter(Mandatory = $true, Position = 0 , ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true, ParameterSetName = 'Path')]
+        [ValidateNotNullOrEmpty()]
+        [string[]]
+        $Path,
+
+        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName = $true, ParameterSetName = 'Literal')]
+        [ValidateNotNullOrEmpty()]
+        [string[]]
+        $LiteralPath,
+
+        [Parameter(Mandatory = $true, Position = 1)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $Destination,
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [securestring]
+        $Password,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('7z', 'zip', 'bzip2', 'gzip', 'tar', 'wim', 'xz')]
+        [string]
+        $Type
+    )
+
+    Begin {
+        $FileList = New-Object 'System.Collections.Generic.HashSet[string]'
+    }
+
+    Process {
+        if ($PSCmdlet.ParameterSetName -eq 'Path') {
+            $Object = $Path
+        }
+        elseif ($PSCmdlet.ParameterSetName -eq 'Literal') {
+            $Object = $LiteralPath
+        }
+
+        foreach ($o in $Object) {
+            if ($PSCmdlet.ParameterSetName -eq 'Path') {
+                $Items = Get-Item -Path $o -ErrorAction SilentlyContinue
+            }
+            elseif ($PSCmdlet.ParameterSetName -eq 'Literal') {
+                $Items = Get-Item -LiteralPath $o -ErrorAction SilentlyContinue
+            }
+
+            foreach ($item in $Items) {
+                $null = $FileList.Add($item.FullName)
+            }
+        }
+    }
+
+    End {
+        if ($FileList.Count -le 0) {
+            Write-Error -Exception [FileNotFoundException]::new('No item found.')
+            return
+        }
+
+        try {
+            $AllItems = New-Object System.String[]($FileList.Count)
+            $FileList.CopyTo($AllItems, 0)
+            $null = [Archive]::Compress($AllItems, $Destination, $Type, $Password)
+        }
+        catch {
+            Write-Error -Exception $_.Exception
+            return
+        }
     }
 }
 
