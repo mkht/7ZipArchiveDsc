@@ -642,6 +642,9 @@ function Set-TargetResource {
 アーカイブファイルのパスを指定します
 アーカイブは7Zipで扱える形式である必要があります
 
+.PARAMETER Password
+アーカイブがパスワード保護されている場合、パスワードを指定する必要があります
+
 .EXAMPLE
 PS> Get-7ZipArchiveFileList -Path C:\Test.zip
 
@@ -676,6 +679,9 @@ function Get-7ZipArchiveFileList {
 .PARAMETER Path
 アーカイブファイルのパスを指定します
 アーカイブは7Zipで扱える形式である必要があります
+
+.PARAMETER Password
+アーカイブがパスワード保護されている場合、パスワードを指定する必要があります
 
 .EXAMPLE
 PS> Get-7ZipArchive -Path C:\Test.zip
@@ -725,6 +731,9 @@ function Get-7ZipArchive {
 
 .PARAMETER Destination
 アーカイブファイルの展開先フォルダを指定します
+
+.PARAMETER Password
+アーカイブがパスワード保護されている場合、パスワードを指定する必要があります
 
 .PARAMETER IgnoreRoot
 IgnoreRootが指定された場合、アーカイブ内のルートフォルダを除外します
@@ -925,6 +934,9 @@ function Test-ArchiveExistsAtDestination {
 .PARAMETER Destination
 アーカイブファイルの展開先フォルダを指定します
 展開先フォルダ内にアーカイブ内のファイルと同名のファイルが存在する場合は、確認なしで上書きされることに注意してください
+
+.PARAMETER Password
+アーカイブがパスワード保護されている場合、パスワードを指定する必要があります
 
 .PARAMETER IgnoreRoot
 IgnoreRootが指定された場合、アーカイブ内のルートフォルダを除外して展開します
