@@ -125,9 +125,10 @@ PS> Expand-7ZipArchive -Path "C:\Archive.zip" -Destination "C:\Destination"
 
 
 ## Changelog
-### 1.3.0
+### 1.3.1
   - Add `Password` property for extracting archives that has protected with password.
   - Export useful functions `Expand-7ZipArchive` and `Compress-7ZipArchive`
+  - Improve error handling.
   - Fixed some security issues.
 
 ### 1.1.0
