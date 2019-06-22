@@ -1,4 +1,4 @@
-﻿#Requires -Version 5
+#Requires -Version 5
 using namespace System.IO;
 
 $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
@@ -76,9 +76,9 @@ class Archive {
 
         # Test integrity of archive
         $msg = $null
-        try { $msg = & $script:7zExe t "$Path" -ba -p"$pPwd" }catch { }
+        try { $msg = & $script:7zExe t "$Path" -ba -p"$pPwd" 2>&1 }catch { }
         if ($LASTEXITCODE -ne [ExitCode]::Success) {
-            throw [System.ArgumentException]::new($Error[0].Exception.Message)
+            throw [System.ArgumentException]::new($msg -join $NewLine)
         }
 
         return $msg
@@ -99,9 +99,9 @@ class Archive {
         }
 
         $ret = $null
-        try { $ret = & $script:7zExe l "$Path" -ba -slt -p"$pPwd" }catch { }
+        try { $ret = & $script:7zExe l "$Path" -ba -slt -p"$pPwd" 2>&1 }catch { }
         if ($LASTEXITCODE -ne [ExitCode]::Success) {
-            throw [System.InvalidOperationException]::new($Error[0].Exception.Message)
+            throw [System.InvalidOperationException]::new($ret -join $NewLine)
         }
         return ($ret -join $NewLine).Replace('\', '\\') -split "$NewLine$NewLine" |`
             ConvertFrom-StringData |`
@@ -306,9 +306,11 @@ class Archive {
         if ($Type) {
             $CmdParam += ('-t"{0}"' -f $Type)
         }
+        $CmdParam += '2>&1'
 
+        $msg = $null
         try {
-            Invoke-Expression ($CmdParam -join ' ') | ForEach-Object -Process {
+            $msg = Invoke-Expression ($CmdParam -join ' ') | ForEach-Object -Process {
                 if ($_ -match '(\d+)\%') {
                     $progress = $Matches.1
                     if ([int]::TryParse($progress, [ref]$progress)) {
@@ -325,7 +327,7 @@ class Archive {
                 Remove-Item $Destination -ErrorAction SilentlyContinue
                 Move-Item $oldItem $Destination -Force
             }
-            throw [System.InvalidOperationException]::new($Error[0].Exception.Message)
+            throw [System.ArgumentException]::new($msg -join [System.Environment]::NewLine)
         }
         else {
             if (($null -ne $oldItem) -and (Test-Path $oldItem -ErrorAction SilentlyContinue)) {
