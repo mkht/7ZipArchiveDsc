@@ -1,4 +1,4 @@
-﻿#Requires -Version 5
+#Requires -Version 5
 using namespace System.IO;
 
 $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
@@ -28,7 +28,15 @@ class Archive {
     [Object[]] $FileList
 
     Archive([string]$Path) {
-        $info = [Archive]::TestArchive($Path) |`
+        $this.Init($Path, $null)
+    }
+
+    Archive([string]$Path, [securestring]$Password) {
+        $this.Init($Path, $Password)
+    }
+
+    Hidden [void]Init([string]$Path, [securestring]$Password) {
+        $info = [Archive]::TestArchive($Path, $Password) |`
             ForEach-Object { $_.Replace('\', '\\') } |`
             ForEach-Object { if ($_ -notmatch '=') { $_.Replace(':', ' =') }else { $_ } } |`
             Where-Object { $_ -match '^.+=.+$' } |`
@@ -43,7 +51,7 @@ class Archive {
             $this.Folders = [int]::Parse($info.Folders)
         }
         $this.FileInfo = [FileInfo]::new($Path)
-        $this.FileList = [Archive]::GetFileList($Path)
+        $this.FileList = [Archive]::GetFileList($Path, $Password)
     }
 
     [Object[]]GetFileList() {
@@ -51,30 +59,49 @@ class Archive {
     }
 
     static [string[]]TestArchive([string]$Path) {
+        return [Archive]::TestArchive($Path, $null)
+    }
+
+    static [string[]]TestArchive([string]$Path, [securestring]$Password) {
         $NewLine = [System.Environment]::NewLine
         if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
             throw [FileNotFoundException]::new()
         }
 
+        $pPwd = [string]::Empty
+        if ($Password) {
+            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
+            $pPwd = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+        }
+
         # Test integrity of archive
         $msg = $null
-        try { $msg = & $script:7zExe t $Path -ba }catch { }
+        try { $msg = & $script:7zExe t "$Path" -ba -p"$pPwd" }catch { }
         if ($LASTEXITCODE -ne [ExitCode]::Success) {
-            throw [System.ArgumentException]::new($msg -join $NewLine)
+            throw [System.ArgumentException]::new($Error[0].Exception.Message)
         }
 
         return $msg
     }
 
     static [Object[]]GetFileList([string]$Path) {
-        $NewLine = [System.Environment]::NewLine
-        # [Archive]::TestArchive($Path) | Write-Debug
+        return [Archive]::GetFileList($Path, $null)
+    }
 
+    static [Object[]]GetFileList([string]$Path, [securestring]$Password) {
+        $NewLine = [System.Environment]::NewLine
         Write-Verbose 'Enumerating files & folders in the archive.'
+
+        $pPwd = [string]::Empty
+        if ($Password) {
+            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
+            $pPwd = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+        }
+
         $ret = $null
-        try { $ret = & $script:7zExe l $Path -ba -slt }catch { }
+        try { $ret = & $script:7zExe l "$Path" -ba -slt -p"$pPwd" }catch { }
         if ($LASTEXITCODE -ne [ExitCode]::Success) {
-            throw [System.InvalidOperationException]::new($ret -join $NewLine)
+            throw [System.InvalidOperationException]::new($Error[0].Exception.Message)
         }
         return ($ret -join $NewLine).Replace('\', '\\') -split "$NewLine$NewLine" |`
             ConvertFrom-StringData |`
@@ -125,7 +152,15 @@ class Archive {
         $this.Extract($Destination, $false)
     }
 
+    [void]Extract([string]$Destination, [securestring]$Password) {
+        $this.Extract($Destination, $Password, $false)
+    }
+
     [void]Extract([string]$Destination, [bool]$IgnoreRoot) {
+        $this.Extract($Destination, $null, $IgnoreRoot)
+    }
+
+    [void]Extract([string]$Destination, [securestring]$Password , [bool]$IgnoreRoot) {
         $Guid = [System.Guid]::NewGuid().toString()
         $FinalDestination = $Destination
 
@@ -133,6 +168,12 @@ class Archive {
         $statusMessage = "Extracting..."
 
         Write-Verbose $activityMessage
+
+        $pPwd = [string]::Empty
+        if ($Password) {
+            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
+            $pPwd = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+        }
 
         # Test the archive has multiple root or not
         if ($IgnoreRoot) {
@@ -167,7 +208,7 @@ class Archive {
 
         if ($IgnoreRoot) {
             try {
-                & $script:7zExe x $this.Path -ba -o"$Destination" -y -aoa -spe -bsp1 | ForEach-Object -Process {
+                & $script:7zExe x "$($this.Path)" -ba -o"$Destination" -p"$pPwd" -y -aoa -spe -bsp1 | ForEach-Object -Process {
                     if ($_ -match '(\d+)\%') {
                         $progress = $Matches.1
                         if ([int]::TryParse($progress, [ref]$progress)) {
@@ -180,7 +221,7 @@ class Archive {
         }
         else {
             try {
-                & $script:7zExe x $this.Path -ba -o"$Destination" -y -aoa -bsp1 | ForEach-Object -Process {
+                & $script:7zExe x "$($this.Path)" -ba -o"$Destination" -p"$pPwd" -y -aoa -bsp1 | ForEach-Object -Process {
                     if ($_ -match '(\d+)\%') {
                         $progress = $Matches.1
                         if ([int]::TryParse($progress, [ref]$progress)) {
@@ -219,9 +260,19 @@ class Archive {
         [Archive]::Extract($Path, $Destination, $false)
     }
 
+    static [void]Extract([string]$Path, [string]$Destination, [securestring]$Password) {
+        $archive = [Archive]::new($Path, $Password)
+        $archive.Extract($Destination, $Password)
+    }
+
     static [void]Extract([string]$Path, [string]$Destination, [bool]$IgnoreRoot) {
         $archive = [Archive]::new($Path)
         $archive.Extract($Destination, $IgnoreRoot)
+    }
+
+    static [void]Extract([string]$Path, [string]$Destination, [securestring]$Password , [bool]$IgnoreRoot) {
+        $archive = [Archive]::new($Path, $Password)
+        $archive.Extract($Destination, $Password, $IgnoreRoot)
     }
 }
 
@@ -323,6 +374,7 @@ function Get-CRC32Hash {
 function Get-TargetResource {
     [CmdletBinding()]
     [OutputType([System.Collections.Hashtable])]
+    [Diagnostics.CodeAnalysis.SuppressMessage("PSAvoidUsingPlainTextForPassword", '')]
     param
     (
         [Parameter()]
@@ -337,6 +389,10 @@ function Get-TargetResource {
         [Parameter(Mandatory)]
         [string]
         $Destination,
+
+        [Parameter()]
+        [string]
+        $Password,
 
         [Parameter()]
         [bool]
@@ -394,6 +450,10 @@ function Get-TargetResource {
         Clean       = $Clean
     }
 
+    if ($Password) {
+        $testParam.Password = ConvertTo-SecureString $Password -AsPlainText -Force
+    }
+
     if ($Validate) {
         if ($Checksum -eq 'CRC32') { $Checksum = 'CRC' }
         $testParam.Checksum = $Checksum
@@ -428,6 +488,7 @@ function Get-TargetResource {
 function Test-TargetResource {
     [CmdletBinding()]
     [OutputType([bool])]
+    [Diagnostics.CodeAnalysis.SuppressMessage("PSAvoidUsingPlainTextForPassword", '')]
     param
     (
         [Parameter()]
@@ -442,6 +503,10 @@ function Test-TargetResource {
         [Parameter(Mandatory)]
         [string]
         $Destination,
+
+        [Parameter()]
+        [string]
+        $Password,
 
         [Parameter()]
         [bool]
@@ -477,6 +542,7 @@ function Test-TargetResource {
 
 
 function Set-TargetResource {
+    [Diagnostics.CodeAnalysis.SuppressMessage("PSAvoidUsingPlainTextForPassword", '')]
     param
     (
         [Parameter()]
@@ -491,6 +557,10 @@ function Set-TargetResource {
         [Parameter(Mandatory)]
         [string]
         $Destination,
+
+        [Parameter()]
+        [string]
+        $Password,
 
         [Parameter()]
         [bool]
@@ -547,6 +617,10 @@ function Set-TargetResource {
         Clean       = $Clean
     }
 
+    if ($Password) {
+        $testParam.Password = ConvertTo-SecureString $Password -AsPlainText -Force
+    }
+
     try {
         Expand-7ZipArchive @testParam -ErrorAction Stop
     }
@@ -583,7 +657,12 @@ function Get-7ZipArchiveFileList {
         [Parameter(Mandatory = $true, DontShow = $true, ParameterSetName = 'Class')]
         [ValidateNotNullOrEmpty()]
         [Archive]
-        $Archive
+        $Archive,
+
+        [Parameter(ParameterSetName = 'Path')]
+        [AllowNull()]
+        [securestring]
+        $Password
     )
 
     (Get-7ZipArchive @PSBoundParameters).FileList
@@ -613,14 +692,19 @@ function Get-7ZipArchive {
         [Parameter(Mandatory = $true, DontShow = $true, ParameterSetName = 'Class')]
         [ValidateNotNullOrEmpty()]
         [Archive]
-        $Archive
+        $Archive,
+
+        [Parameter(ParameterSetName = 'Path')]
+        [AllowNull()]
+        [securestring]
+        $Password
     )
 
     # $Archiveクラスのインスタンスを返すラッパー関数
 
     if ($PSCmdlet.ParameterSetName -eq 'Path') {
         try {
-            $Archive = [Archive]::new($Path)
+            $Archive = [Archive]::new($Path, $Password)
         }
         catch {
             Write-Error -Exception $_.Exception
@@ -672,6 +756,11 @@ function Test-ArchiveExistsAtDestination {
         $Destination,
 
         [Parameter()]
+        [AllowNull()]
+        [securestring]
+        $Password,
+
+        [Parameter()]
         [switch]
         $IgnoreRoot,
 
@@ -708,7 +797,7 @@ function Test-ArchiveExistsAtDestination {
         return $false
     }
 
-    $archive = Get-7ZipArchive -Path $Path
+    $archive = Get-7ZipArchive -Path $Path -Password $Password
 
     if ($Clean) {
         $ExistFileCount = @(Get-ChildItem -LiteralPath $Destination -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { -not $_.PsIsContainer }).Count
@@ -866,6 +955,11 @@ function Expand-7ZipArchive {
         [string]
         $Destination,
 
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [securestring]
+        $Password,
+
         [Parameter()]
         [switch]
         $IgnoreRoot,
@@ -884,7 +978,7 @@ function Expand-7ZipArchive {
 
     if ($PSCmdlet.ParameterSetName -eq 'Path') {
         try {
-            $Archive = [Archive]::new($Path)
+            $Archive = [Archive]::new($Path, $Password)
         }
         catch {
             Write-Error -Exception $_.Exception
@@ -900,7 +994,7 @@ function Expand-7ZipArchive {
     }
 
     try {
-        $Archive.Extract($Destination, $IgnoreRoot)
+        $Archive.Extract($Destination, $Password, $IgnoreRoot)
     }
     catch {
         Write-Error -Exception $_.Exception
