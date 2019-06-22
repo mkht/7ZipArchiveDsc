@@ -76,7 +76,15 @@ class Archive {
 
         # Test integrity of archive
         $msg = $null
-        try { $msg = & $script:7zExe t "$Path" -ba -p"$pPwd" 2>&1 }catch { }
+        $currentEA = $global:ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            $msg = & $script:7zExe t "$Path" -ba -p"$pPwd" 2>&1
+        }
+        catch { }
+        finally {
+            $global:ErrorActionPreference = $currentEA
+        }
         if ($LASTEXITCODE -ne [ExitCode]::Success) {
             throw [System.ArgumentException]::new($msg -join $NewLine)
         }
@@ -99,10 +107,20 @@ class Archive {
         }
 
         $ret = $null
-        try { $ret = & $script:7zExe l "$Path" -ba -slt -p"$pPwd" 2>&1 }catch { }
+        $currentEA = $global:ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            $ret = & $script:7zExe l "$Path" -ba -slt -p"$pPwd" 2>&1
+        }
+        catch { }
+        finally {
+            $global:ErrorActionPreference = $currentEA
+        }
+
         if ($LASTEXITCODE -ne [ExitCode]::Success) {
             throw [System.InvalidOperationException]::new($ret -join $NewLine)
         }
+
         return ($ret -join $NewLine).Replace('\', '\\') -split "$NewLine$NewLine" |`
             ConvertFrom-StringData |`
             ForEach-Object {
@@ -207,7 +225,9 @@ class Archive {
         }
 
         if ($IgnoreRoot) {
+            $currentEA = $global:ErrorActionPreference
             try {
+                $ErrorActionPreference = 'Continue'
                 & $script:7zExe x "$($this.Path)" -ba -o"$Destination" -p"$pPwd" -y -aoa -spe -bsp1 | ForEach-Object -Process {
                     if ($_ -match '(\d+)\%') {
                         $progress = $Matches.1
@@ -218,9 +238,14 @@ class Archive {
                 }
             }
             catch { }
+            finally {
+                $global:ErrorActionPreference = $currentEA
+            }
         }
         else {
+            $currentEA = $global:ErrorActionPreference
             try {
+                $ErrorActionPreference = 'Continue'
                 & $script:7zExe x "$($this.Path)" -ba -o"$Destination" -p"$pPwd" -y -aoa -bsp1 | ForEach-Object -Process {
                     if ($_ -match '(\d+)\%') {
                         $progress = $Matches.1
@@ -231,6 +256,9 @@ class Archive {
                 }
             }
             catch { }
+            finally {
+                $global:ErrorActionPreference = $currentEA
+            }
         }
 
         $ExitCode = $LASTEXITCODE
@@ -309,7 +337,9 @@ class Archive {
         $CmdParam += '2>&1'
 
         $msg = $null
+        $currentEA = $global:ErrorActionPreference
         try {
+            $ErrorActionPreference = 'Continue'
             $msg = Invoke-Expression ($CmdParam -join ' ') | ForEach-Object -Process {
                 if ($_ -match '(\d+)\%') {
                     $progress = $Matches.1
@@ -320,6 +350,9 @@ class Archive {
             }
         }
         catch { }
+        finally {
+            $global:ErrorActionPreference = $currentEA
+        }
 
         $ExitCode = $LASTEXITCODE
         if ($ExitCode -ne [ExitCode]::Success) {
