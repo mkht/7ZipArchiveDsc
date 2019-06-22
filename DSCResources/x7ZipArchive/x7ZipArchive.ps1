@@ -76,9 +76,10 @@ class Archive {
 
         # Test integrity of archive
         $msg = $null
-        try { $msg = & $script:7zExe t "$Path" -ba -p"$pPwd" 2>&1 }catch { }
+        try { $msg = & $script:7zExe t "$Path" -ba -p"$pPwd" }catch { }
         if ($LASTEXITCODE -ne [ExitCode]::Success) {
-            throw [System.ArgumentException]::new($msg -join $NewLine)
+            $Message = $Error[0].Exception.Message
+            throw [System.ArgumentException]::new($Message)
         }
 
         return $msg
@@ -99,9 +100,10 @@ class Archive {
         }
 
         $ret = $null
-        try { $ret = & $script:7zExe l "$Path" -ba -slt -p"$pPwd" 2>&1 }catch { }
+        try { $ret = & $script:7zExe l "$Path" -ba -slt -p"$pPwd" }catch { }
         if ($LASTEXITCODE -ne [ExitCode]::Success) {
-            throw [System.InvalidOperationException]::new($ret -join $NewLine)
+            $Message = $Error[0].Exception.Message
+            throw [System.InvalidOperationException]::new($Message)
         }
         return ($ret -join $NewLine).Replace('\', '\\') -split "$NewLine$NewLine" |`
             ConvertFrom-StringData |`
@@ -306,11 +308,9 @@ class Archive {
         if ($Type) {
             $CmdParam += ('-t"{0}"' -f $Type)
         }
-        $CmdParam += '2>&1'
 
-        $msg = $null
         try {
-            $msg = Invoke-Expression ($CmdParam -join ' ') | ForEach-Object -Process {
+            Invoke-Expression ($CmdParam -join ' ') | ForEach-Object -Process {
                 if ($_ -match '(\d+)\%') {
                     $progress = $Matches.1
                     if ([int]::TryParse($progress, [ref]$progress)) {
@@ -327,7 +327,8 @@ class Archive {
                 Remove-Item $Destination -ErrorAction SilentlyContinue
                 Move-Item $oldItem $Destination -Force
             }
-            throw [System.ArgumentException]::new($msg -join [System.Environment]::NewLine)
+            $Message = $Error[0].Exception.Message
+            throw [System.InvalidOperationException]::new($Message)
         }
         else {
             if (($null -ne $oldItem) -and (Test-Path $oldItem -ErrorAction SilentlyContinue)) {
@@ -1231,9 +1232,3 @@ function UnMount-PSDrive {
 }
 
 
-Export-ModuleMember -Function @(
-    'Get-TargetResource',
-    'Set-TargetResource',
-    'Expand-7ZipArchive',
-    'Compress-7ZipArchive'
-)
