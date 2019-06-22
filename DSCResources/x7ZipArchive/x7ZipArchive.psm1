@@ -1233,6 +1233,7 @@ function UnMount-PSDrive {
 
 Export-ModuleMember -Function @(
     'Get-TargetResource',
+    'Test-TargetResource',
     'Set-TargetResource',
     'Expand-7ZipArchive',
     'Compress-7ZipArchive'
