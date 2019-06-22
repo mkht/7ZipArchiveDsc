@@ -24,6 +24,9 @@ This resource uses [7-Zip](https://www.7-zip.org/) utility for expand an archive
 + **[string] Destination** (key):
     + The path where the specified archive file should be expanded.
 
++ **[string] Password** (Write):
+    + Specifies the password for archive file.
+
 + **[bool] Validate** (Write):
     + Specifies whether or not to validate that a file at the destination with the same name as a file in the archive actually matches that corresponding file in the archive by the specified checksum method.
     + The default is `False`
@@ -46,10 +49,87 @@ This resource uses [7-Zip](https://www.7-zip.org/) utility for expand an archive
     + The credential for access to the archive on a remote source if needed.
 
 
-## Usage
+### Usage
 See [Examples](/Examples).
 
+----
+## Functions
+
+### Compress-7ZipArchive
+Creates an archive from specified files and folders.
+
++ **Syntax**
+```PowerShell
+Compress-7ZipArchive [-Path] <string[]> [-Destination] <string> [-Password <securestring>] [-Type <string>]
+```
+
++ **Example1**
+```PowerShell
+PS> $SecurePassword = Read-Host -AsSecureString
+PS> Compress-7ZipArchive -Path "C:\Folder1", "C:\Folder2" -Destination "C:\Archive.zip" -Password $SecurePassword
+```
+
++ **Example2**
+```PowerShell
+PS> Get-Item D:\*.txt | Compress-7ZipArchive -Destination "C:\Archive.zip"
+```
+
++ **Parameters**
+  - **[string[]] Path**
+    Specifies the path to the files that you want to add to the archive.  
+    This parameter is required.
+
+  - **[string] Destination**
+    Specifies the path to the archive output file.  
+    This parameter is required.
+
+  - **[securestring] Password**
+    Specifies the password for archive file.
+
+  - **[string] Type**
+    Specifies the type of the archive file.  
+    You can choose from `7z`, `zip`, `bzip2`, `gzip`, `tar`, `wim` and `xz`.  
+    When the parameter is not specified, the type will be determined from extension of the output file.
+
+### Expand-7ZipArchive
+Extracts files from a specified archive file.
+
++ **Syntax**
+```PowerShell
+Expand-7ZipArchive [-Path] <string> [-Destination] <string> [-Password <securestring>] [-IgnoreRoot] [-Clean]
+```
+
++ **Example**
+```PowerShell
+PS> Expand-7ZipArchive -Path "C:\Archive.zip" -Destination "C:\Destination"
+```
+
++ **Parameters**
+  - **[string[]] Path**
+    Specifies the path to the archive file.   
+    This parameter is required.
+
+  - **[string] Destination**
+    Specifies the path to the folder in which you want to extract files.  
+    This parameter is required.
+
+  - **[securestring] Password**
+    Specifies the password for archive file.
+
+  - **[switch] IgnoreRoot**
+    When the switch is specified, this command will extract files in the root directory of the archive to the destination.  
+    An exception will be thrown if the archive has multiple files or directories in the root. 
+    
+  - **[switch] Clean**
+    When the switch is specified, this command removes all files in the destination before extract.
+
+
 ## Changelog
+### Unreleased
+  - Add `Password` property for extracting archives that has protected with password.
+  - Export useful functions `Expand-7ZipArchive` and `Compress-7ZipArchive`
+  - Fixed some security issues.
+
 ### 1.1.0
   - Acceptable values of `Checksum` has been changed to `ModifiedDate`, `Size` and `CRC` (`CRC32` is remained for backwards compatibility, but will soon deprecated.) 
   - Fixed issue that the CRC hash of LZH archive is not calculated properly.
