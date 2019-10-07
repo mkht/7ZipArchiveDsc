@@ -179,7 +179,7 @@ class Archive {
     }
 
     [void]Extract([string]$Destination, [securestring]$Password , [bool]$IgnoreRoot) {
-        $Guid = [System.Guid]::NewGuid().toString()
+        $Seed = -join ((1..10) | % { Get-Random -input ([char[]]((48..57) + (65..90) + (97..122))) })
         $FinalDestination = $Destination
 
         $activityMessage = ('Extracting archive: {0} to {1}' -f $this.Path, $FinalDestination)
@@ -221,7 +221,7 @@ class Archive {
                 throw [System.InvalidOperationException]::new("Archive has multiple items in the root. You can't use IgnoreRoot option.")
             }
 
-            $Destination = Join-Path $FinalDestination "$Guid\$rootDir"
+            $Destination = Join-Path $FinalDestination "$Seed\$rootDir"
         }
 
         if ($IgnoreRoot) {
@@ -263,8 +263,8 @@ class Archive {
 
         $ExitCode = $LASTEXITCODE
         if ($ExitCode -ne [ExitCode]::Success) {
-            if (Test-Path -LiteralPath (Join-Path $FinalDestination $Guid)) {
-                Remove-Item -LiteralPath (Join-Path $FinalDestination $Guid) -Force -Recurse -ErrorAction SilentlyContinue
+            if (Test-Path -LiteralPath (Join-Path $FinalDestination $Seed) -ErrorAction Ignore) {
+                Remove-Item -LiteralPath (Join-Path $FinalDestination $Seed) -Force -Recurse -ErrorAction SilentlyContinue
             }
             throw [System.InvalidOperationException]::new(('Exit code:{0} ({1})' -f $ExitCode, ([ExitCode]$ExitCode).ToString()))
         }
@@ -274,10 +274,10 @@ class Archive {
 
         if ($IgnoreRoot) {
             try {
-                Get-ChildItem -LiteralPath $Destination -Recurse -Force | Move-Item -Destination $FinalDestination -Force -ErrorAction Stop
+                Get-ChildItem -LiteralPath $Destination -Force | Move-Item -Destination $FinalDestination -Force -ErrorAction Stop
             }
             finally {
-                Remove-Item -LiteralPath (Join-Path $FinalDestination $Guid) -Force -Recurse -ErrorAction SilentlyContinue
+                Remove-Item -LiteralPath (Join-Path $FinalDestination $Seed) -Force -Recurse -ErrorAction SilentlyContinue
             }
         }
 
