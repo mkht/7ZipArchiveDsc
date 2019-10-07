@@ -64,7 +64,7 @@ class Archive {
 
     static [string[]]TestArchive([string]$Path, [securestring]$Password) {
         $NewLine = [System.Environment]::NewLine
-        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore)) {
             throw [FileNotFoundException]::new()
         }
 
@@ -316,7 +316,7 @@ class Archive {
         $statusMessage = "Compressing..."
 
         $oldItem = $null
-        if (Test-Path $Destination -PathType Leaf) {
+        if (Test-Path $Destination -PathType Leaf -ErrorAction Ignore) {
             $item = Get-Item -LiteralPath $Destination
             $tmpName = $item.BaseName + ( -join ((1..5) | % { Get-Random -input ([char[]]((48..57) + (65..90) + (97..122))) })) + $item.Extension
             $oldItem = $item | Rename-Item -NewName $tmpName -Force -PassThru
@@ -356,14 +356,14 @@ class Archive {
 
         $ExitCode = $LASTEXITCODE
         if ($ExitCode -ne [ExitCode]::Success) {
-            if (($null -ne $oldItem) -and (Test-Path $oldItem -ErrorAction SilentlyContinue)) {
+            if (($null -ne $oldItem) -and (Test-Path $oldItem -ErrorAction Ignore)) {
                 Remove-Item $Destination -ErrorAction SilentlyContinue
                 Move-Item $oldItem $Destination -Force
             }
             throw [System.ArgumentException]::new($msg -join [System.Environment]::NewLine)
         }
         else {
-            if (($null -ne $oldItem) -and (Test-Path $oldItem -ErrorAction SilentlyContinue)) {
+            if (($null -ne $oldItem) -and (Test-Path $oldItem -ErrorAction Ignore)) {
                 Remove-Item $oldItem -Force
             }
             Write-Progress -Activity $activityMessage -Status 'Compression complete.' -Completed
@@ -397,7 +397,7 @@ function Get-CRC16Hash {
     }
 
     Process {
-        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore)) {
             Write-Error -Exception ([FileNotFoundException]::new('The file is not exist.'))
         }
         else {
@@ -446,7 +446,7 @@ function Get-CRC32Hash {
     }
 
     Process {
-        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore)) {
             Write-Error -Exception ([FileNotFoundException]::new('The file is not exist.'))
             return
         }
@@ -534,7 +534,7 @@ function Get-TargetResource {
         $local:PsDrive = Mount-PSDriveWithCredential -Root (Split-Path $Path -Parent) -Credential $Credential -ErrorAction Stop
     }
 
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction SilentlyContinue)) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore)) {
         Write-Error "The path $Path does not exist or is not a file"
         UnMount-PSDrive -Name $local:PsDrive.Name -ErrorAction SilentlyContinue
         return
@@ -701,7 +701,7 @@ function Set-TargetResource {
         $local:PsDrive = Mount-PSDriveWithCredential -Root (Split-Path $Path -Parent) -Credential $Credential -ErrorAction Stop
     }
 
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction SilentlyContinue)) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore)) {
         Write-Error "The path $Path does not exist or is not a file"
         UnMount-PSDrive -Name $local:PsDrive.Name -ErrorAction SilentlyContinue
         return
@@ -891,7 +891,7 @@ function Test-ArchiveExistsAtDestination {
     4. アーカイブ内のファイル/フォルダ全てがDestination内に存在していればTrueを、一つでも存在しないファイルがあればFalseを返す
     #>
 
-    if (-not (Test-Path -LiteralPath $Destination -PathType Container)) {
+    if (-not (Test-Path -LiteralPath $Destination -PathType Container -ErrorAction Ignore)) {
         #Destination folder is not exist
         Write-Verbose 'The destination folder is not exist'
         return $false
