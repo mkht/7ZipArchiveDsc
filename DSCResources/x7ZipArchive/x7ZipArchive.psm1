@@ -1,4 +1,4 @@
-#Requires -Version 5
+﻿#Requires -Version 5
 using namespace System.IO;
 
 $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
@@ -897,7 +897,7 @@ function Test-ArchiveExistsAtDestination {
         return $false
     }
 
-    if ($null -eq (Get-ChildItem -LiteralPath $Destination -Force | Select-Object -First 1)) {
+    if ((Get-ChildItem -LiteralPath $Destination -Force | Measure-Object).Count -eq 0) {
         #Destination folder is empty
         Write-Verbose 'The destination folder is empty'
         return $false
