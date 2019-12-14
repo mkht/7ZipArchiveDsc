@@ -1,4 +1,4 @@
-﻿#Requires -Version 5
+#Requires -Version 5
 using namespace System.IO;
 
 $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
@@ -999,17 +999,22 @@ function Test-ArchiveExistsAtDestination {
             elseif ($Checksum -eq 'CRC') {
                 if (-not $CurrentFileInfo.PsIsContainer) {
                     # Compare file hash
-                    if ($archive.Type -eq 'lzh') {
-                        #LZH has CRC16 checksum
-                        $CurrentFileHash = Get-CRC16Hash -Path $CurrentFileInfo.FullName
+                    if ($CurrentFileInfo.Length -eq 0) {
+                        # Write-Verbose ('The size of "{0}" is 0-byte. Skip hash test.' -f $Item.Path)
                     }
                     else {
-                        $CurrentFileHash = Get-CRC32Hash -Path $CurrentFileInfo.FullName
-                    }
-                    if ($CurrentFileHash -ne $Item.CRC) {
-                        Write-Verbose ('The hash of "{0}" is not same.' -f $Item.Path)
-                        Write-Verbose ('Exist:{0} / Archive:{1}' -f $CurrentFileHash, $Item.CRC)
-                        return $false
+                        if ($archive.Type -eq 'lzh') {
+                            #LZH has CRC16 checksum
+                            $CurrentFileHash = Get-CRC16Hash -Path $CurrentFileInfo.FullName
+                        }
+                        else {
+                            $CurrentFileHash = Get-CRC32Hash -Path $CurrentFileInfo.FullName
+                        }
+                        if ($CurrentFileHash -ne $Item.CRC) {
+                            Write-Verbose ('The hash of "{0}" is not same.' -f $Item.Path)
+                            Write-Verbose ('Exist:{0} / Archive:{1}' -f $CurrentFileHash, $Item.CRC)
+                            return $false
+                        }
                     }
                 }
             }
