@@ -125,6 +125,9 @@ PS> Expand-7ZipArchive -Path "C:\Archive.zip" -Destination "C:\Destination"
 
 
 ## Changelog
+### 1.3.3
+  - Fixed issue that an incorrect result is returned if 0-byte files exists in the archive.
+
 ### 1.3.2
   - Fixed minor issues.
   - Improved stabilities.
