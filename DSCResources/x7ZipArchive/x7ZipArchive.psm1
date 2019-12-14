@@ -1,4 +1,4 @@
-#Requires -Version 5
+﻿#Requires -Version 5
 using namespace System.IO;
 
 $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
@@ -37,10 +37,10 @@ class Archive {
 
     Hidden [void]Init([string]$Path, [securestring]$Password) {
         $info = [Archive]::TestArchive($Path, $Password) |`
-                ForEach-Object { $_.Replace('\', '\\') } |`
-                ForEach-Object { if ($_ -notmatch '=') { $_.Replace(':', ' =') }else { $_ } } |`
-                Where-Object { $_ -match '^.+=.+$' } |`
-                ConvertFrom-StringData
+            ForEach-Object { $_.Replace('\', '\\') } |`
+            ForEach-Object { if ($_ -notmatch '=') { $_.Replace(':', ' =') }else { $_ } } |`
+            Where-Object { $_ -match '^.+=.+$' } |`
+            ConvertFrom-StringData
 
         $this.Path = $Path
         $this.Type = [string]$info.Type
@@ -122,48 +122,48 @@ class Archive {
         }
 
         return ($ret -join $NewLine).Replace('\', '\\') -split "$NewLine$NewLine" |`
-                ConvertFrom-StringData |`
-                ForEach-Object {
-                $tmp = $_
+            ConvertFrom-StringData |`
+            ForEach-Object {
+            $tmp = $_
 
-                $tmp.Size = [int]$_.Size
-                $tmp.Encrypted = [bool]($_.Encrypted -eq '+')
+            $tmp.Size = [int]$_.Size
+            $tmp.Encrypted = [bool]($_.Encrypted -eq '+')
 
-                if ($_.Modified) {
-                    $tmp.Modified = [datetime]$_.Modified
-                }
-
-                if ($_.Created) {
-                    $tmp.Created = [datetime]$_.Created
-                }
-
-                if ($_.Accessed) {
-                    $tmp.Accessed = [datetime]$_.Accessed
-                }
-
-                if ($_.'Packed Size') {
-                    $tmp.'Packed Size' = [int]$_.'Packed Size'
-                }
-
-                if ($_.Folder) {
-                    $tmp.Folder = [bool]($_.Folder -eq '+')
-                    $tmp.ItemType = if ($tmp.Folder) { 'Folder' }else { 'File' }
-                }
-                else {
-                    $tmp.Folder = [bool]($_.Attributes.Contains('D'))
-                    $tmp.ItemType = if ($tmp.Folder) { 'Folder' }else { 'File' }
-                }
-
-                if ($_.'Volume Index') {
-                    $tmp.'Volume Index' = [int]$_.'Volume Index'
-                }
-
-                if ($_.Offset) {
-                    $tmp.Offset = [int]$_.Offset
-                }
-
-                [PSCustomObject]$tmp
+            if ($_.Modified) {
+                $tmp.Modified = [datetime]$_.Modified
             }
+
+            if ($_.Created) {
+                $tmp.Created = [datetime]$_.Created
+            }
+
+            if ($_.Accessed) {
+                $tmp.Accessed = [datetime]$_.Accessed
+            }
+
+            if ($_.'Packed Size') {
+                $tmp.'Packed Size' = [int]$_.'Packed Size'
+            }
+
+            if ($_.Folder) {
+                $tmp.Folder = [bool]($_.Folder -eq '+')
+                $tmp.ItemType = if ($tmp.Folder) { 'Folder' }else { 'File' }
+            }
+            else {
+                $tmp.Folder = [bool]($_.Attributes.Contains('D'))
+                $tmp.ItemType = if ($tmp.Folder) { 'Folder' }else { 'File' }
+            }
+
+            if ($_.'Volume Index') {
+                $tmp.'Volume Index' = [int]$_.'Volume Index'
+            }
+
+            if ($_.Offset) {
+                $tmp.Offset = [int]$_.Offset
+            }
+
+            [PSCustomObject]$tmp
+        }
     }
 
     [void]Extract([string]$Destination) {
