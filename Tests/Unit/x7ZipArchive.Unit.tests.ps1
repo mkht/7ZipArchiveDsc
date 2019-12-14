@@ -737,6 +737,19 @@ InModuleScope 'x7ZipArchive' {
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
                 }
+
+                It 'ChecksumにCRCが指定されている場合で、アーカイブ内に空ファイルが含まれている場合でも正常にTrueを返す (Fixed issue in 2019-12-14)' {
+                    $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'HasEmptyFile.7z').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    New-Item $Destination -ItemType Directory -Force >$null
+                    New-Item (Join-Path $Destination 'empty') -ItemType File -Force >$null
+                    'ABC' | Out-File (Join-Path $Destination 'text.txt') -Encoding utf8 -NoNewline
+
+                    $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'CRC'
+
+                    $Result | Should -BeOfType 'bool'
+                    $Result | Should -Be $true
+                }
             }
         }
     }
