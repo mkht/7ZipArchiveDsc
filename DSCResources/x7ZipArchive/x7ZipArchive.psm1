@@ -998,23 +998,27 @@ function Test-ArchiveExistsAtDestination {
             }
             elseif ($Checksum -eq 'CRC') {
                 if (-not $CurrentFileInfo.PsIsContainer) {
-                    # Compare file hash
-                    if ($CurrentFileInfo.Length -eq 0) {
-                        # Write-Verbose ('The size of "{0}" is 0-byte. Skip hash test.' -f $Item.Path)
+                    # Some types of an archive does not record CRC value of the 0-byte file.
+                    if ([string]::IsNullOrEmpty($Item.CRC)) {
+                        $ArchiveFileHash = '00000000'
                     }
                     else {
-                        if ($archive.Type -eq 'lzh') {
-                            #LZH has CRC16 checksum
-                            $CurrentFileHash = Get-CRC16Hash -Path $CurrentFileInfo.FullName
-                        }
-                        else {
-                            $CurrentFileHash = Get-CRC32Hash -Path $CurrentFileInfo.FullName
-                        }
-                        if ($CurrentFileHash -ne $Item.CRC) {
-                            Write-Verbose ('The hash of "{0}" is not same.' -f $Item.Path)
-                            Write-Verbose ('Exist:{0} / Archive:{1}' -f $CurrentFileHash, $Item.CRC)
-                            return $false
-                        }
+                        $ArchiveFileHash = $Item.CRC
+                    }
+
+                    if ($archive.Type -eq 'lzh') {
+                        #LZH has CRC16 checksum
+                        $CurrentFileHash = Get-CRC16Hash -Path $CurrentFileInfo.FullName
+                    }
+                    else {
+                        $CurrentFileHash = Get-CRC32Hash -Path $CurrentFileInfo.FullName
+                    }
+
+                    # Compare file hash
+                    if ($CurrentFileHash -ne $ArchiveFileHash) {
+                        Write-Verbose ('The hash of "{0}" is not same.' -f $Item.Path)
+                        Write-Verbose ('Exist:{0} / Archive:{1}' -f $CurrentFileHash, $ArchiveFileHash)
+                        return $false
                     }
                 }
             }
