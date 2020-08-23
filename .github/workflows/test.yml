@@ -1,0 +1,30 @@
+name: 7ZipArchiveDsc
+
+on: [push]
+
+jobs:
+  Tests_PS5:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Pester
+        run: Install-Module Pester -Version 4.10.1 -Force -AllowClobber -Scope CurrentUser -SkipPublisherCheck
+
+      - name: Collect environment
+        run: |
+          $PSVersionTable
+          Get-ChildItem 'env:' | Format-Table -AutoSize -Wrap
+          Get-Module -ListAvailable
+
+      - name: Bootstrap
+        run: |
+          Enable-PSRemoting -Force -SkipNetworkProfileCheck
+          Start-Service winrm
+
+      - name: Tests
+        run: Invoke-Pester -CI -Output Detailed
