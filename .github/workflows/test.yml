@@ -27,4 +27,4 @@ jobs:
           Start-Service winrm
 
       - name: Tests
-        run: Invoke-Pester -CI -Output Detailed
+        run: Invoke-Pester
