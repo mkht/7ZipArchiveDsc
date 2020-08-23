@@ -21,10 +21,8 @@ jobs:
           Get-ChildItem 'env:' | Format-Table -AutoSize -Wrap
           Get-Module -ListAvailable
 
-      - name: Bootstrap
-        run: |
-          Enable-PSRemoting -Force -SkipNetworkProfileCheck
-          Start-Service winrm
+      - name: Configure WinRM
+        run: winrm quickconfig -quiet
 
       - name: Tests
-        run: Invoke-Pester
+        run: Invoke-Pester -EnableExit
