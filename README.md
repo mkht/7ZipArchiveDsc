@@ -96,12 +96,13 @@ Extracts files from a specified archive file.
 
 + **Syntax**
 ```PowerShell
-Expand-7ZipArchive [-Path] <string> [-Destination] <string> [-Password <securestring>] [-IgnoreRoot] [-Clean]
+Expand-7ZipArchive [-Path] <string[]> [-Destination] <string> [-Password <securestring>] [-IgnoreRoot] [-Clean]
 ```
 
 + **Example**
 ```PowerShell
 PS> Expand-7ZipArchive -Path "C:\Archive.zip" -Destination "C:\Destination"
+PS> Get-Item "C:\Archive.zip" | Expand-7ZipArchive -Destination "C:\Destination"
 ```
 
 + **Parameters**
@@ -125,6 +126,12 @@ PS> Expand-7ZipArchive -Path "C:\Archive.zip" -Destination "C:\Destination"
 
 
 ## Changelog
+### Unreleased
+ - `Expand-7ZipArchive` accepts input from pipeline [#5](https://github.com/mkht/7ZipArchiveDsc/issues/5)
+  ```PowerSHell
+  Get-Item "C:\Archive.zip" | Expand-7ZipArchive -Destination "C:\Destination"
+  ```
+
 ### 1.3.4
   - Fixed issue that an incorrect result is returned if 0-byte files exists in the archive.
     (The fix in v1.3.3 was insufficient)
