@@ -878,6 +878,56 @@ InModuleScope 'x7ZipArchive' {
                 Test-Path -Path (Join-Path $Destination 'root\Folder\002.txt') -PathType Leaf | Should -Be $true
             }
         }
+
+        Context 'パイプライン入力、複数ファイル入力' {
+            It 'パイプライン入力（リテラルパス）' {
+                $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+
+                { $PathOfArchive | Expand-7ZipArchive -Destination $Destination } | Should -Not -Throw
+                Test-Path -Path $Destination -PathType Container | Should -Be $true
+                Get-ChildItem -Path $Destination -Recurse -Force | Should -HaveCount 1
+                Test-Path -Path (Join-Path $Destination 'Hello Archive.txt') -PathType Leaf | Should -Be $true
+                Get-Content -Path (Join-Path $Destination 'Hello Archive.txt') -Raw | Should -Be 'Hello Archive!'
+            }
+
+            It 'パイプライン入力（FileInfo）' {
+                $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+
+                { Get-Item -LiteralPath $PathOfArchive | Expand-7ZipArchive -Destination $Destination } | Should -Not -Throw
+                Test-Path -Path $Destination -PathType Container | Should -Be $true
+                Get-ChildItem -Path $Destination -Recurse -Force | Should -HaveCount 1
+                Test-Path -Path (Join-Path $Destination 'Hello Archive.txt') -PathType Leaf | Should -Be $true
+                Get-Content -Path (Join-Path $Destination 'Hello Archive.txt') -Raw | Should -Be 'Hello Archive!'
+            }
+
+            It '複数入力（パラメータ）' {
+                $Items = @()
+                $Items += (Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Items += (Join-Path "TestDrive:\$script:TestGuid" 'TestHasRoot.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+
+                { Expand-7ZipArchive -Path $Items -Destination $Destination } | Should -Not -Throw
+                Test-Path -Path $Destination -PathType Container | Should -Be $true
+                Get-ChildItem -Path $Destination -Recurse -Force | Should -HaveCount 6
+                Test-Path -Path (Join-Path $Destination 'Hello Archive.txt') -PathType Leaf | Should -Be $true
+                Test-Path -Path (Join-Path $Destination 'root') -PathType Container | Should -Be $true
+            }
+
+            It '複数入力（パイプライン）' {
+                $Items = @()
+                $Items += (Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Items += (Join-Path "TestDrive:\$script:TestGuid" 'TestHasRoot.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+
+                { Get-Item -LiteralPath $Items | Expand-7ZipArchive -Destination $Destination } | Should -Not -Throw
+                Test-Path -Path $Destination -PathType Container | Should -Be $true
+                Get-ChildItem -Path $Destination -Recurse -Force | Should -HaveCount 6
+                Test-Path -Path (Join-Path $Destination 'Hello Archive.txt') -PathType Leaf | Should -Be $true
+                Test-Path -Path (Join-Path $Destination 'root') -PathType Container | Should -Be $true
+            }
+        }
     }
     #endregion Tests for Expand-7ZipArchive
 

@@ -36,13 +36,14 @@ class Archive {
     }
 
     Hidden [void]Init([string]$Path, [securestring]$Password) {
+        $this.Path = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Path)
+
         $info = [Archive]::TestArchive($Path, $Password) |`
             ForEach-Object { $_.Replace('\', '\\') } |`
             ForEach-Object { if ($_ -notmatch '=') { $_.Replace(':', ' =') }else { $_ } } |`
             Where-Object { $_ -match '^.+=.+$' } |`
             ConvertFrom-StringData
 
-        $this.Path = $Path
         $this.Type = [string]$info.Type
         if ([int]::TryParse($info.Files, [ref]$null)) {
             $this.Files = [int]::Parse($info.Files)
@@ -50,8 +51,8 @@ class Archive {
         if ([int]::TryParse($info.Folders, [ref]$null)) {
             $this.Folders = [int]::Parse($info.Folders)
         }
-        $this.FileInfo = [FileInfo]::new($Path)
-        $this.FileList = [Archive]::GetFileList($Path, $Password)
+        $this.FileInfo = [FileInfo]::new($this.Path)
+        $this.FileList = [Archive]::GetFileList($this.Path, $Password)
     }
 
     [Object[]]GetFileList() {
@@ -63,8 +64,9 @@ class Archive {
     }
 
     static [string[]]TestArchive([string]$Path, [securestring]$Password) {
+        $LiteralPath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Path)
         $NewLine = [System.Environment]::NewLine
-        if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore)) {
+        if (-not (Test-Path -LiteralPath $LiteralPath -PathType Leaf -ErrorAction Ignore)) {
             throw [FileNotFoundException]::new()
         }
 
@@ -79,7 +81,7 @@ class Archive {
         $currentEA = $global:ErrorActionPreference
         try {
             $ErrorActionPreference = 'Continue'
-            $msg = & $script:7zExe t "$Path" -ba -p"$pPwd" 2>&1
+            $msg = & $script:7zExe t "$LiteralPath" -ba -p"$pPwd" 2>&1
         }
         catch { }
         finally {
@@ -97,6 +99,7 @@ class Archive {
     }
 
     static [Object[]]GetFileList([string]$Path, [securestring]$Password) {
+        $LiteralPath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Path)
         $NewLine = [System.Environment]::NewLine
         Write-Verbose 'Enumerating files & folders in the archive.'
 
@@ -110,7 +113,7 @@ class Archive {
         $currentEA = $global:ErrorActionPreference
         try {
             $ErrorActionPreference = 'Continue'
-            $ret = & $script:7zExe l "$Path" -ba -slt -p"$pPwd" 2>&1
+            $ret = & $script:7zExe l "$LiteralPath" -ba -slt -p"$pPwd" 2>&1
         }
         catch { }
         finally {
@@ -180,7 +183,7 @@ class Archive {
 
     [void]Extract([string]$Destination, [securestring]$Password , [bool]$IgnoreRoot) {
         $Seed = -join ((1..10) | % { Get-Random -input ([char[]]((48..57) + (65..90) + (97..122))) })
-        $FinalDestination = $Destination
+        $FinalDestination = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Destination)
 
         $activityMessage = ('Extracting archive: {0} to {1}' -f $this.Path, $FinalDestination)
         $statusMessage = "Extracting..."
@@ -312,6 +315,7 @@ class Archive {
     }
 
     static [void]Compress([string[]]$Path, [string]$Destination, [string]$Type, [securestring]$Password) {
+        $Destination = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Destination)
         $activityMessage = ('Compress archive: {0}' -f $Destination)
         $statusMessage = "Compressing..."
 
@@ -323,7 +327,10 @@ class Archive {
         }
 
         Write-Verbose $activityMessage
-        [string]$TargetFiles = @($Path).ForEach( { "`"$_`"" }) -join ' '
+        [string]$TargetFiles = @($Path).ForEach( {
+                $LiteralPath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($_)
+                "`"$LiteralPath`""
+            }) -join ' '
 
         [string[]]$CmdParam = ($script:7zExe, 'a', "`"$Destination`"", $TargetFiles, '-ba', '-y', '-ssw', '-spd', '-bsp1')
         if ($Password) {
@@ -1056,11 +1063,17 @@ Expand-7ZipArchive -Path C:\Test.zip -Destination C:\Dest -Clean
 
 #>
 function Expand-7ZipArchive {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'Path')]
     param (
-        [Parameter(Mandatory = $true, ParameterSetName = 'Path')]
+        [Parameter(
+            Mandatory = $true,
+            Position = 0,
+            ValueFromPipeline = $true ,
+            ValueFromPipelineByPropertyName = $true ,
+            ParameterSetName = 'Path')]
+        [Alias('PSPath', 'LiteralPath', 'LP')]
         [ValidateNotNullOrEmpty()]
-        [string]
+        [string[]]
         $Path,
 
         [Parameter(Mandatory = $true, DontShow = $true, ParameterSetName = 'Class')]
@@ -1068,7 +1081,7 @@ function Expand-7ZipArchive {
         [Archive]
         $Archive,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 1, ValueFromPipelineByPropertyName = $true)]
         [ValidateNotNullOrEmpty()]
         [string]
         $Destination,
@@ -1094,29 +1107,35 @@ function Expand-7ZipArchive {
     3. 7Zipを使ってアーカイブをDestinationに展開
     #>
 
-    if ($PSCmdlet.ParameterSetName -eq 'Path') {
-        try {
-            $Archive = [Archive]::new($Path, $Password)
-        }
-        catch {
-            Write-Error -Exception $_.Exception
-            return
-        }
-    }
-
-    if ($Clean) {
-        Write-Verbose ('Clean option is specified. Remove all items in {0}' -f $Destination)
-        if (Test-Path -LiteralPath $Destination -PathType Container) {
-            Get-ChildItem -LiteralPath $Destination -Recurse -Force -Verbose:$false -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue -Verbose:$false
+    Begin {
+        if ($Clean) {
+            Write-Verbose ('Clean option is specified. All items in {0} will be removed' -f $Destination)
+            if (Test-Path -LiteralPath $Destination -PathType Container) {
+                Get-ChildItem -LiteralPath $Destination -Recurse -Force -Verbose:$false -ErrorAction SilentlyContinue |`
+                    Remove-Item -Force -Recurse -ErrorAction SilentlyContinue -Verbose:$false
+            }
         }
     }
 
-    try {
-        $Archive.Extract($Destination, $Password, $IgnoreRoot)
-    }
-    catch {
-        Write-Error -Exception $_.Exception
-        return
+    Process {
+        if ($PSCmdlet.ParameterSetName -eq 'Class') {
+            try {
+                $Archive.Extract($Destination, $Password, $IgnoreRoot)
+            }
+            catch {
+                Write-Error -Exception $_.Exception
+            }
+        }
+        elseif ($PSCmdlet.ParameterSetName -eq 'Path') {
+            foreach ($item in $Path) {
+                try {
+                    [Archive]::Extract($item, $Destination, $Password, $IgnoreRoot)
+                }
+                catch {
+                    Write-Error -Exception $_.Exception
+                }
+            }
+        }
     }
 }
 
