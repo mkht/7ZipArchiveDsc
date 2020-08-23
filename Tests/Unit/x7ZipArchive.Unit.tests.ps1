@@ -485,7 +485,7 @@ InModuleScope 'x7ZipArchive' {
 
             It 'Get-7ZipArchiveで例外発生した場合は例外発生' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 New-Item $Destination -ItemType Directory -Force >$null
                 'ABC' | Out-File (Join-Path $Destination 'test.txt')
 
@@ -498,7 +498,7 @@ InModuleScope 'x7ZipArchive' {
 
             It '展開先フォルダが存在しない場合はFalseを返す' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $PathOfNotExist = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $PathOfNotExist = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $PathOfNotExist
                 $Result | Should -BeOfType 'bool'
@@ -507,7 +507,7 @@ InModuleScope 'x7ZipArchive' {
 
             It '展開先フォルダが空フォルダの場合はFalseを返す' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $PathOfEmptyFolder = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $PathOfEmptyFolder = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 New-Item $PathOfEmptyFolder -ItemType Directory -Force >$null
 
                 $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $PathOfEmptyFolder
@@ -568,7 +568,7 @@ InModuleScope 'x7ZipArchive' {
 
                 It '展開先フォルダにアーカイブ内のファイルとは異なるファイルのみが存在する場合はFalseを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'MultiFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     '100' | Out-File (Join-Path $Destination '100.txt')
 
@@ -581,7 +581,7 @@ InModuleScope 'x7ZipArchive' {
 
                 It '展開先フォルダにアーカイブ内のファイルの一部しか存在しない場合はFalseを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'MultiFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     New-Item (Join-Path $Destination 'Folder') -ItemType Directory -Force >$null
                     '001' | Out-File (Join-Path $Destination '001.txt')
@@ -595,7 +595,7 @@ InModuleScope 'x7ZipArchive' {
 
                 It '展開先フォルダ内のファイルとアーカイブ内のファイルが一致する場合はTrueを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'MultiFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     New-Item (Join-Path $Destination 'Folder') -ItemType Directory -Force >$null
                     '001' | Out-File (Join-Path $Destination '001.txt')
@@ -610,7 +610,7 @@ InModuleScope 'x7ZipArchive' {
 
                 It 'Cleanなしの場合、展開先フォルダにアーカイブ内のファイルが全て存在する場合は他に無関係なファイルが存在していたとしてもTrueを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'MultiFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     New-Item (Join-Path $Destination 'Folder') -ItemType Directory -Force >$null
                     '001' | Out-File (Join-Path $Destination '001.txt')
@@ -626,7 +626,7 @@ InModuleScope 'x7ZipArchive' {
 
                 It 'Cleanありの場合、展開先フォルダの既存ファイル数とアーカイブ内のファイル数が一致しないときにFalseを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'MultiFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     New-Item (Join-Path $Destination 'Folder') -ItemType Directory -Force >$null
                     '001' | Out-File (Join-Path $Destination '001.txt')
@@ -642,7 +642,7 @@ InModuleScope 'x7ZipArchive' {
 
                 It 'Cleanありの場合、展開先フォルダにアーカイブ内のファイルが全て存在し、他に無関係なファイルが存在しない場合にのみTrueを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'MultiFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     New-Item (Join-Path $Destination 'Folder') -ItemType Directory -Force >$null
                     '001' | Out-File (Join-Path $Destination '001.txt')
@@ -660,7 +660,7 @@ InModuleScope 'x7ZipArchive' {
 
                 It 'ChecksumにModifiedDateが指定されている場合で、展開先フォルダ内のファイルとアーカイブ内のファイルの更新日時が一致しない場合はFalseを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'SingleFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     '001' | Out-File (Join-Path $Destination '001.txt')
                     Set-ItemProperty (Join-Path $Destination '001.txt') -Name LastWriteTime -Value '2018-08-10 00:02:36'
@@ -674,7 +674,7 @@ InModuleScope 'x7ZipArchive' {
 
                 It 'ChecksumにModifiedDateが指定されている場合で、展開先フォルダ内のファイルとアーカイブ内のファイルの更新日時が一致する場合はTrueを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'SingleFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     '001' | Out-File (Join-Path $Destination '001.txt')
                     Set-ItemProperty (Join-Path $Destination '001.txt') -Name LastWriteTime -Value '2018-08-09 00:02:36.12'
@@ -688,7 +688,7 @@ InModuleScope 'x7ZipArchive' {
 
                 It 'ChecksumにSizeが指定されている場合で、展開先フォルダ内のファイルとアーカイブ内のファイルのサイズが一致しない場合はFalseを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'SingleFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     '0011' | Out-File (Join-Path $Destination '001.txt') -Encoding ascii -NoNewline
 
@@ -701,7 +701,7 @@ InModuleScope 'x7ZipArchive' {
 
                 It 'ChecksumにSizeが指定されている場合で、展開先フォルダ内のファイルとアーカイブ内のファイルのサイズが一致する場合はTrueを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'SingleFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     '123' | Out-File (Join-Path $Destination '001.txt') -Encoding ascii -NoNewline
 
@@ -714,7 +714,7 @@ InModuleScope 'x7ZipArchive' {
 
                 It 'ChecksumにCRCが指定されている場合で、展開先フォルダ内のファイルとアーカイブ内のファイルのCRCが一致しない場合はFalseを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'SingleFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     '010' | Out-File (Join-Path $Destination '001.txt') -Encoding ascii -NoNewline
 
@@ -727,7 +727,7 @@ InModuleScope 'x7ZipArchive' {
 
                 It 'ChecksumにCRCが指定されている場合で、展開先フォルダ内のファイルとアーカイブ内のファイルのCRCが一致する場合はTrueを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'SingleFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     '001' | Out-File (Join-Path $Destination '001.txt') -Encoding ascii -NoNewline
 
@@ -740,7 +740,7 @@ InModuleScope 'x7ZipArchive' {
 
                 It 'ChecksumにCRCが指定されている場合で、アーカイブ内に空ファイルが含まれている場合でも正常にTrueを返す (Fixed issue in 2019-12-14)' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'HasEmptyFile.7z').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     New-Item (Join-Path $Destination 'empty') -ItemType File -Force >$null
                     'ABC' | Out-File (Join-Path $Destination 'text.txt') -Encoding utf8 -NoNewline
@@ -768,7 +768,7 @@ InModuleScope 'x7ZipArchive' {
 
             It 'アーカイブパスが存在しない場合は例外発生' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'NotExist.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 { Expand-7ZipArchive -Path $PathOfArchive -Destination $Destination } | Should -Throw -ExceptionType ([System.IO.FileNotFoundException])
                 Test-Path -Path $Destination | Should -Be $false
@@ -777,7 +777,7 @@ InModuleScope 'x7ZipArchive' {
             It 'アーカイブパスがファイルでない場合は例外発生' {
                 $PathOfFolder = (Join-Path "TestDrive:\$script:TestGuid" 'Folder.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 New-Item $PathOfFolder -ItemType Directory -Force >$null
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 { Expand-7ZipArchive -Path $PathOfFolder -Destination $Destination } | Should -Throw -ExceptionType ([System.IO.FileNotFoundException])
                 Test-Path -Path $Destination | Should -Be $false
@@ -786,7 +786,7 @@ InModuleScope 'x7ZipArchive' {
             It '指定されたファイルがアーカイブファイルでない場合は例外発生' {
                 $PathOfInvalidArchive = (Join-Path "TestDrive:\$script:TestGuid" 'InvalidZIP.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 'This is not an Archive' | Out-File -FilePath (Join-Path "TestDrive:\$script:TestGuid" 'InvalidZIP.zip')
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 { Expand-7ZipArchive -Path $PathOfInvalidArchive -Destination $Destination } | Should -Throw -ExceptionType ([System.ArgumentException])
                 Test-Path -Path $Destination | Should -Be $false
@@ -794,7 +794,7 @@ InModuleScope 'x7ZipArchive' {
 
             It 'IgnoreRootが指定されている場合で、アーカイブにひとつの"ファイル"のみが含まれる場合は例外発生' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 { Expand-7ZipArchive -Path $PathOfArchive -Destination $Destination -IgnoreRoot } | Should -Throw "Archive has no item or only one file in the root. You can't use IgnoreRoot option."
                 Test-Path -Path $Destination | Should -Be $false
@@ -802,7 +802,7 @@ InModuleScope 'x7ZipArchive' {
 
             It 'IgnoreRootが指定されている場合で、アーカイブのルートに複数のファイル/フォルダが含まれる場合は例外発生' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 { Expand-7ZipArchive -Path $PathOfArchive -Destination $Destination -IgnoreRoot } | Should -Throw "Archive has multiple items in the root. You can't use IgnoreRoot option."
                 Test-Path -Path $Destination | Should -Be $false
@@ -814,7 +814,7 @@ InModuleScope 'x7ZipArchive' {
 
             It '展開先フォルダが存在しない場合、フォルダを作成してその中に展開する' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 { Expand-7ZipArchive -Path $PathOfArchive -Destination $Destination } | Should -Not -Throw
                 Test-Path -Path $Destination -PathType Container | Should -Be $true
@@ -825,7 +825,7 @@ InModuleScope 'x7ZipArchive' {
 
             It '展開先フォルダにアーカイブ内のファイルと異なるファイルが存在する場合、そのファイルは残したまま展開する (Clean指定なしの場合）' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 New-Item $Destination -ItemType Directory -Force >$null
                 '100' | Out-File (Join-Path $Destination '100.txt')
 
@@ -838,7 +838,7 @@ InModuleScope 'x7ZipArchive' {
 
             It 'Clean指定ありの場合、展開前に展開先フォルダ内のファイルを削除する' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 New-Item $Destination -ItemType Directory -Force >$null
                 '100' | Out-File (Join-Path $Destination '100.txt')
 
@@ -851,7 +851,7 @@ InModuleScope 'x7ZipArchive' {
 
             It 'IgnoreRootが指定されている場合、アーカイブのルートフォルダ内のファイルを展開先フォルダ内に展開する' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestHasRoot.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 { Expand-7ZipArchive -Path $PathOfArchive -Destination $Destination -IgnoreRoot } | Should -Not -Throw
                 Test-Path -Path $Destination -PathType Container | Should -Be $true
@@ -866,7 +866,7 @@ InModuleScope 'x7ZipArchive' {
         Context '7zファイル展開' {
             It '7zファイルも展開できること' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestHasRoot.7z').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 { Expand-7ZipArchive -Path $PathOfArchive -Destination $Destination } | Should -Not -Throw
                 Test-Path -Path $Destination -PathType Container | Should -Be $true
@@ -882,7 +882,7 @@ InModuleScope 'x7ZipArchive' {
         Context 'パイプライン入力、複数ファイル入力' {
             It 'パイプライン入力（リテラルパス）' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 { $PathOfArchive | Expand-7ZipArchive -Destination $Destination } | Should -Not -Throw
                 Test-Path -Path $Destination -PathType Container | Should -Be $true
@@ -893,7 +893,7 @@ InModuleScope 'x7ZipArchive' {
 
             It 'パイプライン入力（FileInfo）' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 { Get-Item -LiteralPath $PathOfArchive | Expand-7ZipArchive -Destination $Destination } | Should -Not -Throw
                 Test-Path -Path $Destination -PathType Container | Should -Be $true
@@ -906,7 +906,7 @@ InModuleScope 'x7ZipArchive' {
                 $Items = @()
                 $Items += (Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 $Items += (Join-Path "TestDrive:\$script:TestGuid" 'TestHasRoot.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 { Expand-7ZipArchive -Path $Items -Destination $Destination } | Should -Not -Throw
                 Test-Path -Path $Destination -PathType Container | Should -Be $true
@@ -919,7 +919,7 @@ InModuleScope 'x7ZipArchive' {
                 $Items = @()
                 $Items += (Join-Path "TestDrive:\$script:TestGuid" 'OnlyOneFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 $Items += (Join-Path "TestDrive:\$script:TestGuid" 'TestHasRoot.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([Guid]::NewGuid().toString())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
 
                 { Get-Item -LiteralPath $Items | Expand-7ZipArchive -Destination $Destination } | Should -Not -Throw
                 Test-Path -Path $Destination -PathType Container | Should -Be $true
