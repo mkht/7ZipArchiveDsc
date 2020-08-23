@@ -233,7 +233,7 @@ try {
             It 'Should be expanded archive to destination' {
                 Test-Path (Join-Path $TestDrive "$script:TestGuid\Destination") | Should -Be $true
                 $item = Get-Item -Path (Join-Path $TestDrive "$script:TestGuid\Destination\Hello Archive.txt")
-                $item.LastWriteTime.ToString('s') | Should -Be '2018-08-09T00:02:18'
+                $item.LastWriteTimeUtc.ToString('s') | Should -Be '2018-08-08T15:02:18'
                 Get-Content $item -Raw | Should -Be 'Hello Archive!'
             }
         }

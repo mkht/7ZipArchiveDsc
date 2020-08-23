@@ -3,7 +3,7 @@ name: 7ZipArchiveDsc
 on: [push]
 
 jobs:
-  Tests_PS5:
+  Tests_PowerShell_5:
     runs-on: windows-latest
     defaults:
       run:
@@ -15,14 +15,44 @@ jobs:
       - name: Install Pester
         run: Install-Module Pester -MaximumVersion 4.10.1 -Force -AllowClobber -Scope CurrentUser -SkipPublisherCheck
 
+      - name: Configure WinRM
+        run: winrm quickconfig -quiet
+
       - name: Collect environment
         run: |
           $PSVersionTable
           Get-ChildItem 'env:' | Format-Table -AutoSize -Wrap
           Get-Module -ListAvailable
 
+      - name: Unit Tests
+        run: Invoke-Pester -Tag 'Unit' -EnableExit
+
+      - name: Integration Tests
+        run: Invoke-Pester -Tag 'Integration' -EnableExit
+
+  Tests_PowerShell_7:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Pester
+        run: Install-Module Pester -MaximumVersion 4.10.1 -Force -AllowClobber -Scope CurrentUser -SkipPublisherCheck
+
       - name: Configure WinRM
         run: winrm quickconfig -quiet
 
-      - name: Tests
-        run: Invoke-Pester -EnableExit
+      - name: Collect environment
+        run: |
+          $PSVersionTable
+          Get-ChildItem 'env:' | Format-Table -AutoSize -Wrap
+          Get-Module -ListAvailable
+
+      - name: Unit Tests
+        run: Invoke-Pester -Tag 'Unit' -EnableExit
+
+      - name: Integration Tests
+        run: Invoke-Pester -Tag 'Integration' -EnableExit
