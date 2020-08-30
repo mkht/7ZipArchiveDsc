@@ -1,6 +1,6 @@
 @{
     RootModule           = '7ZipArchiveDsc.psm1'
-    ModuleVersion        = '1.3.4'
+    ModuleVersion        = '1.4.0'
     GUID                 = '9c9688ed-1172-4d5a-9c80-772e086edda6'
     Author               = 'mkht'
     CompanyName          = ''

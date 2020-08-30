@@ -1,6 +1,6 @@
 # 7ZipArchiveDsc
 
-[![Build Status](https://mkht.visualstudio.com/7ZipArchiveDsc/_apis/build/status/mkht.7ZipArchiveDsc?branchName=master)](https://mkht.visualstudio.com/7ZipArchiveDsc/_build/latest?definitionId=6&branchName=master)
+![7ZipArchiveDsc](https://github.com/mkht/7ZipArchiveDsc/workflows/7ZipArchiveDsc/badge.svg)
 
 PowerShell DSC Resource to expand an archive file to a specific path. 
 
@@ -126,11 +126,12 @@ PS> Get-Item "C:\Archive.zip" | Expand-7ZipArchive -Destination "C:\Destination"
 
 
 ## Changelog
-### Unreleased
+### 1.4.0
  - `Expand-7ZipArchive` accepts input from pipeline [#5](https://github.com/mkht/7ZipArchiveDsc/issues/5)
   ```PowerSHell
   Get-Item "C:\Archive.zip" | Expand-7ZipArchive -Destination "C:\Destination"
   ```
+ - Switch CI platform to GitHub Actions
 
 ### 1.3.4
   - Fixed issue that an incorrect result is returned if 0-byte files exists in the archive.
