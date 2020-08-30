@@ -743,10 +743,9 @@ InModuleScope 'x7ZipArchive' {
                     $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
                     New-Item (Join-Path $Destination 'empty') -ItemType File -Force >$null
-                    'ABC' | Out-File (Join-Path $Destination 'text.txt') -Encoding utf8 -NoNewline
+                    'ABC' | Out-File (Join-Path $Destination 'text.txt') -NoNewline -Encoding (& { if ($PSVersionTable.PSVersion.Major -ge 6) { 'utf8Bom' }else { 'utf8' } })
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'CRC'
-
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
                 }
@@ -993,7 +992,7 @@ InModuleScope 'x7ZipArchive' {
             Mock Test-Path { $true }
 
             $Ret = Mount-PSDriveWithCredential -Root 'something' -Credential $script:TestCredential
-            $Ret.Name | Should -Match '([A-Fa-f0-9]{8})\-([A-Fa-f0-9]{4})\-([A-Fa-f0-9]{4})\-([A-Fa-f0-9]{4})\-([A-Fa-f0-9]{12})'
+            $Ret.Name | Should -Match '([A-Fa-f0-9] { 8 })\-([A-Fa-f0-9] { 4 })\-([A-Fa-f0-9] { 4 })\-([A-Fa-f0-9] { 4 })\-([A-Fa-f0-9] { 12 })'
             Assert-MockCalled -CommandName New-PSDrive -Times 1 -Scope It -Exactly
             Assert-MockCalled -CommandName Test-Path -Times 1 -Scope It -Exactly
             Assert-MockCalled -CommandName UnMount-PSDrive -Times 0 -Scope It -Exactly
