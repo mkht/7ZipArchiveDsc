@@ -5,11 +5,11 @@ Param (
 
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
-    [string[]]$ExcludeDirs = @('.git', 'Tests', '.vscode'),
+    [string[]]$ExcludeDirs = @('.git', '.github', 'Tests', '.vscode'),
 
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
-    [string[]]$ExcludeFiles = @('.gitignore', 'azure-pipelines.yml'),
+    [string[]]$ExcludeFiles = @('.gitignore'),
 
     [switch]$WhatIf
 )
