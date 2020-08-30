@@ -992,7 +992,7 @@ InModuleScope 'x7ZipArchive' {
             Mock Test-Path { $true }
 
             $Ret = Mount-PSDriveWithCredential -Root 'something' -Credential $script:TestCredential
-            $Ret.Name | Should -Match '([A-Fa-f0-9] { 8 })\-([A-Fa-f0-9] { 4 })\-([A-Fa-f0-9] { 4 })\-([A-Fa-f0-9] { 4 })\-([A-Fa-f0-9] { 12 })'
+            $Ret.Name | Should -Match '([A-Fa-f0-9]{8})\-([A-Fa-f0-9]{4})\-([A-Fa-f0-9]{4})\-([A-Fa-f0-9]{4})\-([A-Fa-f0-9]{12})'
             Assert-MockCalled -CommandName New-PSDrive -Times 1 -Scope It -Exactly
             Assert-MockCalled -CommandName Test-Path -Times 1 -Scope It -Exactly
             Assert-MockCalled -CommandName UnMount-PSDrive -Times 0 -Scope It -Exactly
