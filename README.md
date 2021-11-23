@@ -126,6 +126,9 @@ PS> Get-Item "C:\Archive.zip" | Expand-7ZipArchive -Destination "C:\Destination"
 
 
 ## Changelog
+### 1.5.0
+  - 7z.exe updated to 21.05
+
 ### 1.4.0
  - `Expand-7ZipArchive` accepts input from pipeline [#5](https://github.com/mkht/7ZipArchiveDsc/issues/5)
   ```PowerSHell

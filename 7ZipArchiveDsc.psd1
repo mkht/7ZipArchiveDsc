@@ -1,10 +1,10 @@
 @{
     RootModule           = '7ZipArchiveDsc.psm1'
-    ModuleVersion        = '1.4.0'
+    ModuleVersion        = '1.5.0'
     GUID                 = '9c9688ed-1172-4d5a-9c80-772e086edda6'
     Author               = 'mkht'
     CompanyName          = ''
-    Copyright            = '(c) 2020 mkht. All rights reserved.'
+    Copyright            = '(c) 2021 mkht. All rights reserved.'
     Description          = 'PowerShell DSC Resource to expand an archive file to a specific path. '
     PowerShellVersion    = '5.0'
     FunctionsToExport    = @(

@@ -1,9 +1,22 @@
 ﻿#Requires -Version 5
 using namespace System.IO
 
-$script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\7z.exe'
 $script:Crc16 = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\CRC16\CRC16.cs'
 $script:Crc32NET = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\Crc32.NET\Crc32.NET.dll'
+$OSArch = (Get-CimInstance Win32_OperatingSystem).OSArchitecture
+switch -regex ($OSArch) {
+    'ARM 64' {
+        $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\ARM64\7z.exe'
+        break
+    }
+    '64' {
+        $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\x64\7z.exe'
+        break
+    }
+    Default {
+        $script:7zExe = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\7-Zip\x86\7z.exe'
+    }
+}
 
 # Class CRC16
 $crc16 = Get-Content -LiteralPath $script:Crc16 -Raw
