@@ -126,6 +126,9 @@ PS> Get-Item "C:\Archive.zip" | Expand-7ZipArchive -Destination "C:\Destination"
 
 
 ## Changelog
+### 1.5.1
+  - 7z.exe updated to 21.06
+
 ### 1.5.0
   - 7z.exe updated to 21.05
 
