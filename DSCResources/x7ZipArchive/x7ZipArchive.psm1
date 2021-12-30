@@ -165,9 +165,13 @@ class Archive {
                 $tmp.Folder = [bool]($_.Folder -eq '+')
                 $tmp.ItemType = if ($tmp.Folder) { 'Folder' }else { 'File' }
             }
-            else {
+            elseif ($_.Attributes) {
                 $tmp.Folder = [bool]($_.Attributes.Contains('D'))
                 $tmp.ItemType = if ($tmp.Folder) { 'Folder' }else { 'File' }
+            }
+            else {
+                # Some type of archive (e.g. VHDX) has no folder flag or attributes
+                $tmp.ItemType = 'File'
             }
 
             if ($_.'Volume Index') {
@@ -199,7 +203,7 @@ class Archive {
         $FinalDestination = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Destination)
 
         $activityMessage = ('Extracting archive: {0} to {1}' -f $this.Path, $FinalDestination)
-        $statusMessage = "Extracting..."
+        $statusMessage = 'Extracting...'
 
         Write-Verbose $activityMessage
 
@@ -330,7 +334,7 @@ class Archive {
     static [void]Compress([string[]]$Path, [string]$Destination, [string]$Type, [securestring]$Password) {
         $Destination = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Destination)
         $activityMessage = ('Compress archive: {0}' -f $Destination)
-        $statusMessage = "Compressing..."
+        $statusMessage = 'Compressing...'
 
         $oldItem = $null
         if (Test-Path $Destination -PathType Leaf -ErrorAction Ignore) {
@@ -491,7 +495,7 @@ function Get-CRC32Hash {
 function Get-TargetResource {
     [CmdletBinding()]
     [OutputType([System.Collections.Hashtable])]
-    [Diagnostics.CodeAnalysis.SuppressMessage("PSAvoidUsingPlainTextForPassword", '')]
+    [Diagnostics.CodeAnalysis.SuppressMessage('PSAvoidUsingPlainTextForPassword', '')]
     param
     (
         [Parameter()]
@@ -605,7 +609,7 @@ function Get-TargetResource {
 function Test-TargetResource {
     [CmdletBinding()]
     [OutputType([bool])]
-    [Diagnostics.CodeAnalysis.SuppressMessage("PSAvoidUsingPlainTextForPassword", '')]
+    [Diagnostics.CodeAnalysis.SuppressMessage('PSAvoidUsingPlainTextForPassword', '')]
     param
     (
         [Parameter()]
@@ -659,7 +663,7 @@ function Test-TargetResource {
 
 
 function Set-TargetResource {
-    [Diagnostics.CodeAnalysis.SuppressMessage("PSAvoidUsingPlainTextForPassword", '')]
+    [Diagnostics.CodeAnalysis.SuppressMessage('PSAvoidUsingPlainTextForPassword', '')]
     param
     (
         [Parameter()]
@@ -1289,7 +1293,7 @@ function Mount-PSDriveWithCredential {
 
 
 function UnMount-PSDrive {
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseApprovedVerbs", "")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseApprovedVerbs', '')]
     [CmdletBinding()]
     [OutputType([void])]
     param (
