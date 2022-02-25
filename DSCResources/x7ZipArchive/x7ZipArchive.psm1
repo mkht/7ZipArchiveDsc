@@ -422,7 +422,7 @@ function Get-CRC16Hash {
 
     Process {
         if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore)) {
-            Write-Error -Exception ([FileNotFoundException]::new('The file is not exist.'))
+            Write-Error -Exception ([FileNotFoundException]::new('The file does not exist.'))
         }
         else {
             try {
@@ -471,7 +471,7 @@ function Get-CRC32Hash {
 
     Process {
         if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore)) {
-            Write-Error -Exception ([FileNotFoundException]::new('The file is not exist.'))
+            Write-Error -Exception ([FileNotFoundException]::new('The file does not exist.'))
             return
         }
 
@@ -916,8 +916,8 @@ function Test-ArchiveExistsAtDestination {
     #>
 
     if (-not (Test-Path -LiteralPath $Destination -PathType Container -ErrorAction Ignore)) {
-        #Destination folder is not exist
-        Write-Verbose 'The destination folder is not exist'
+        #Destination folder does not exist
+        Write-Verbose 'The destination folder does not exist'
         return $false
     }
 
@@ -988,7 +988,7 @@ function Test-ArchiveExistsAtDestination {
         }
         if (-not (Test-Path @tParam)) {
             # Target file not exist => return false
-            Write-Verbose ('The file "{0}" in the archive is not exist in the destination folder' -f $Item.Path)
+            Write-Verbose ('The file "{0}" in the archive does not exist in the destination folder' -f $Item.Path)
             return $false
         }
 
