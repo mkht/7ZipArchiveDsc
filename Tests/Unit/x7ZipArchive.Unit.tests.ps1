@@ -763,7 +763,7 @@ InModuleScope 'x7ZipArchive' {
                     $Result | Should -Be $true
                 }
 
-                It 'ChecksumにSizeが指定されている場合で、ipファイル内にパスが260文字を超えるファイルが含まれる場合でも正しい結果を返す Issue #6' {
+                It 'ChecksumにSizeが指定されている場合で、Zipファイル内にパスが260文字を超えるファイルが含まれる場合でも正しい結果を返す Issue #6' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TooLongPath.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
@@ -819,7 +819,7 @@ InModuleScope 'x7ZipArchive' {
                     $Result | Should -Be $true
                 }
 
-                It 'ChecksumにCRCが指定されている場合で、ipファイル内にパスが260文字を超えるファイルが含まれる場合でも正しい結果を返す Issue #6' {
+                It 'ChecksumにCRCが指定されている場合で、Zipファイル内にパスが260文字を超えるファイルが含まれる場合でも正しい結果を返す Issue #6' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TooLongPath.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     New-Item $Destination -ItemType Directory -Force >$null
