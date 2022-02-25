@@ -562,6 +562,20 @@ InModuleScope 'x7ZipArchive' {
                 }
             } -ParameterFilter { $Path -eq ((Join-Path "TestDrive:\$script:TestGuid" 'MultiFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)) }
 
+            Mock Get-7ZipArchive -MockWith {
+                @{
+                    FileList = @(
+                        [PsCustomObject]@{
+                            ItemType = 'File'
+                            Modified = [Datetime]::Parse('2018-08-09 00:02:36')
+                            Size     = 3
+                            CRC      = '55B20A4B'
+                            Path     = '\client\stage\Components\oracle.jdk\1.8.0.201.0\1.0.xx.fhaslaaaafwiflaalafskfnwowngwslsgns,xcnsofnwognwslnfldngwongwlkegndskgnekgnkesgnksngklsnfaga\DataFiles\Expanded\filegroup3\lib\missioncontrol\plugins\com.jrockit.mc.console.ui.notification_5.5.2.174165\com.jrockit.mc.console.ui.notification_contexts.xml'
+                        }
+                    )
+                }
+            } -ParameterFilter { $Path -eq ((Join-Path "TestDrive:\$script:TestGuid" 'TooLongPath.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)) }
+
             Mock Get-7ZipArchive -MockWith { throw 'IgnoreRoot specified' } -ParameterFilter { $IgnoreRoot }
 
             Context 'Validateなし' {
@@ -602,6 +616,24 @@ InModuleScope 'x7ZipArchive' {
                     '002' | Out-File (Join-Path $Destination '\Folder\002.txt')
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination
+
+                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    $Result | Should -BeOfType 'bool'
+                    $Result | Should -Be $true
+                }
+
+                It 'Zipファイル内にパスが260文字を超えるファイルが含まれる場合でも正しい結果を返す Issue #6' {
+                    $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TooLongPath.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    New-Item $Destination -ItemType Directory -Force >$null
+                    $TooLong = '\client\stage\Components\oracle.jdk\1.8.0.201.0\1.0.xx.fhaslaaaafwiflaalafskfnwowngwslsgns,xcnsofnwognwslnfldngwongwlkegndskgnekgnkesgnksngklsnfaga\DataFiles\Expanded\filegroup3\lib\missioncontrol\plugins\com.jrockit.mc.console.ui.notification_5.5.2.174165'
+                    New-Item ('\\?\' + (Join-Path $Destination $TooLong)) -ItemType Directory -Force >$null
+                    '001' | Out-File -LiteralPath (('\\?\' + (Join-Path $Destination $TooLong)) + '\com.jrockit.mc.console.ui.notification_contexts.xml')
+
+                    $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination
+
+                    # Cleanup
+                    [System.IO.Directory]::Delete(('\\?\' + $Destination), $true)
 
                     Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
@@ -686,6 +718,25 @@ InModuleScope 'x7ZipArchive' {
                     $Result | Should -Be $true
                 }
 
+                It 'ChecksumにModifiedDateが指定されている場合で、Zipファイル内にパスが260文字を超えるファイルが含まれる場合でも正しい結果を返す Issue #6' {
+                    $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TooLongPath.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    New-Item $Destination -ItemType Directory -Force >$null
+                    $TooLong = '\client\stage\Components\oracle.jdk\1.8.0.201.0\1.0.xx.fhaslaaaafwiflaalafskfnwowngwslsgns,xcnsofnwognwslnfldngwongwlkegndskgnekgnkesgnksngklsnfaga\DataFiles\Expanded\filegroup3\lib\missioncontrol\plugins\com.jrockit.mc.console.ui.notification_5.5.2.174165'
+                    New-Item ('\\?\' + (Join-Path $Destination $TooLong)) -ItemType Directory -Force >$null
+                    '001' | Out-File -LiteralPath (('\\?\' + (Join-Path $Destination $TooLong)) + '\com.jrockit.mc.console.ui.notification_contexts.xml')
+                    Set-ItemProperty -LiteralPath (('\\?\' + (Join-Path $Destination $TooLong)) + '\com.jrockit.mc.console.ui.notification_contexts.xml') -Name LastWriteTime -Value '2018-08-09 00:02:36.12'
+
+                    $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'ModifiedDate'
+
+                    # Cleanup
+                    [System.IO.Directory]::Delete(('\\?\' + $Destination), $true)
+
+                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    $Result | Should -BeOfType 'bool'
+                    $Result | Should -Be $true
+                }
+
                 It 'ChecksumにSizeが指定されている場合で、展開先フォルダ内のファイルとアーカイブ内のファイルのサイズが一致しない場合はFalseを返す' {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'SingleFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                     $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
@@ -706,6 +757,24 @@ InModuleScope 'x7ZipArchive' {
                     '123' | Out-File (Join-Path $Destination '001.txt') -Encoding ascii -NoNewline
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'Size'
+
+                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    $Result | Should -BeOfType 'bool'
+                    $Result | Should -Be $true
+                }
+
+                It 'ChecksumにSizeが指定されている場合で、ipファイル内にパスが260文字を超えるファイルが含まれる場合でも正しい結果を返す Issue #6' {
+                    $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TooLongPath.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    New-Item $Destination -ItemType Directory -Force >$null
+                    $TooLong = '\client\stage\Components\oracle.jdk\1.8.0.201.0\1.0.xx.fhaslaaaafwiflaalafskfnwowngwslsgns,xcnsofnwognwslnfldngwongwlkegndskgnekgnkesgnksngklsnfaga\DataFiles\Expanded\filegroup3\lib\missioncontrol\plugins\com.jrockit.mc.console.ui.notification_5.5.2.174165'
+                    New-Item ('\\?\' + (Join-Path $Destination $TooLong)) -ItemType Directory -Force >$null
+                    '123' | Out-File -LiteralPath (('\\?\' + (Join-Path $Destination $TooLong)) + '\com.jrockit.mc.console.ui.notification_contexts.xml') -Encoding ascii -NoNewline
+
+                    $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'Size'
+
+                    # Cleanup
+                    [System.IO.Directory]::Delete(('\\?\' + $Destination), $true)
 
                     Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
@@ -746,6 +815,24 @@ InModuleScope 'x7ZipArchive' {
                     'ABC' | Out-File (Join-Path $Destination 'text.txt') -NoNewline -Encoding (& { if ($PSVersionTable.PSVersion.Major -ge 6) { 'utf8Bom' }else { 'utf8' } })
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'CRC'
+                    $Result | Should -BeOfType 'bool'
+                    $Result | Should -Be $true
+                }
+
+                It 'ChecksumにCRCが指定されている場合で、ipファイル内にパスが260文字を超えるファイルが含まれる場合でも正しい結果を返す Issue #6' {
+                    $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TooLongPath.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    New-Item $Destination -ItemType Directory -Force >$null
+                    $TooLong = '\client\stage\Components\oracle.jdk\1.8.0.201.0\1.0.xx.fhaslaaaafwiflaalafskfnwowngwslsgns,xcnsofnwognwslnfldngwongwlkegndskgnekgnkesgnksngklsnfaga\DataFiles\Expanded\filegroup3\lib\missioncontrol\plugins\com.jrockit.mc.console.ui.notification_5.5.2.174165'
+                    New-Item ('\\?\' + (Join-Path $Destination $TooLong)) -ItemType Directory -Force >$null
+                    '001' | Out-File -LiteralPath (('\\?\' + (Join-Path $Destination $TooLong)) + '\com.jrockit.mc.console.ui.notification_contexts.xml') -Encoding ascii -NoNewline
+
+                    $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'CRC'
+
+                    # Cleanup
+                    [System.IO.Directory]::Delete(('\\?\' + $Destination), $true)
+
+                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
                 }
@@ -1044,6 +1131,49 @@ InModuleScope 'x7ZipArchive' {
         }
     }
     #endregion Tests for UnMount-PSDrive
+
+    #region Tests for Convert-RelativePathToAbsolute
+    Describe 'x7ZipArchive/Convert-RelativePathToAbsolute' -Tag 'Unit' {
+
+        BeforeAll {
+            $ErrorActionPreference = 'Stop'
+        }
+
+        BeforeEach {
+            Push-Location 'C:\Users\Public'
+        }
+
+        AfterEach {
+            Pop-Location
+        }
+
+        It 'Pathが 絶対パス かつ 259文字以下 の場合はそのまま返却' {
+            $TestPath = 'C:\foo\bar\baz'
+            $ExpectResult = $TestPath
+            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+        }
+
+        It 'Pathが 相対パス かつ 259文字以下 の場合は絶対パスに変換して返却' {
+            $TestPath = '.\foo\bar\baz'
+            $ExpectResult = 'C:\Users\Public\foo\bar\baz'
+            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+        }
+
+        It 'Pathが260文字以上の場合は\\?\プリフィックスを付与して返却' {
+            $LongString = -join ((1..300).ForEach({ 'a' }))
+            $TestPath = "C:\foo\$LongString\baz"
+            $ExpectResult = '\\?\' + $TestPath
+            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+        }
+
+        It 'Pathが260文字以上かつUNCパスの場合は\\?\UNC\プリフィックスを付与して返却' {
+            $LongString = -join ((1..300).ForEach({ 'b' }))
+            $TestPath = "\\server\foo\$LongString\baz"
+            $ExpectResult = "\\?\UNC\server\foo\$LongString\baz"
+            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+        }
+    }
+    #endregion Tests for Convert-RelativePathToAbsolute
 
 }
 #endregion End Testing

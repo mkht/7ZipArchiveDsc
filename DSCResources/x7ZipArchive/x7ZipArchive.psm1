@@ -241,7 +241,7 @@ class Archive {
                 throw [System.InvalidOperationException]::new("Archive has multiple items in the root. You can't use IgnoreRoot option.")
             }
 
-            $Destination = Join-Path $FinalDestination "$Seed\$rootDir"
+            $Destination = $global:ExecutionContext.SessionState.Path.Combine($FinalDestination, "$Seed\$rootDir")
         }
 
         if ($IgnoreRoot) {
@@ -283,8 +283,8 @@ class Archive {
 
         $ExitCode = $LASTEXITCODE
         if ($ExitCode -ne [ExitCode]::Success) {
-            if (Test-Path -LiteralPath (Join-Path $FinalDestination $Seed) -ErrorAction Ignore) {
-                Remove-Item -LiteralPath (Join-Path $FinalDestination $Seed) -Force -Recurse -ErrorAction SilentlyContinue
+            if (Test-Path -LiteralPath ($global:ExecutionContext.SessionState.Path.Combine($FinalDestination, $Seed)) -ErrorAction Ignore) {
+                Remove-Item -LiteralPath ($global:ExecutionContext.SessionState.Path.Combine($FinalDestination, $Seed)) -Force -Recurse -ErrorAction SilentlyContinue
             }
             throw [System.InvalidOperationException]::new(('Exit code:{0} ({1})' -f $ExitCode, ([ExitCode]$ExitCode).ToString()))
         }
@@ -297,7 +297,7 @@ class Archive {
                 Get-ChildItem -LiteralPath $Destination -Force | Move-Item -Destination $FinalDestination -Force -ErrorAction Stop
             }
             finally {
-                Remove-Item -LiteralPath (Join-Path $FinalDestination $Seed) -Force -Recurse -ErrorAction SilentlyContinue
+                Remove-Item -LiteralPath ($global:ExecutionContext.SessionState.Path.Combine($FinalDestination, $Seed)) -Force -Recurse -ErrorAction SilentlyContinue
             }
         }
 
@@ -547,6 +547,10 @@ function Get-TargetResource {
     #>
 
     $local:PsDrive = $null
+    $OriginalPath = $Path
+    $OriginalDestination = $Destination
+    $Path = Convert-RelativePathToAbsolute -Path $Path
+    $Destination = Convert-RelativePathToAbsolute -Path $Destination
 
     # Checksumが指定されているが、ValidateがFalseの場合はエラー
     if ($PSBoundParameters.ContainsKey('Checksum') -and (-not $Validate)) {
@@ -559,7 +563,7 @@ function Get-TargetResource {
     }
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore)) {
-        Write-Error "The path $Path does not exist or is not a file"
+        Write-Error "The path $OriginalPath does not exist or is not a file"
         UnMount-PSDrive -Name $local:PsDrive.Name -ErrorAction SilentlyContinue
         return
     }
@@ -600,8 +604,8 @@ function Get-TargetResource {
 
     return @{
         Ensure      = $Ensure
-        Path        = $Path
-        Destination = $Destination
+        Path        = $OriginalPath
+        Destination = $OriginalDestination
     }
 } # end of Get-TargetResource
 
@@ -714,6 +718,10 @@ function Set-TargetResource {
     #>
 
     $local:PsDrive = $null
+    $OriginalPath = $Path
+    # $OriginalDestination = $Destination
+    $Path = Convert-RelativePathToAbsolute -Path $Path
+    $Destination = Convert-RelativePathToAbsolute -Path $Destination
 
     # Checksumが指定されているが、ValidateがFalseの場合はエラー
     if ($PSBoundParameters.ContainsKey('Checksum') -and (-not $Validate)) {
@@ -726,7 +734,7 @@ function Set-TargetResource {
     }
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore)) {
-        Write-Error "The path $Path does not exist or is not a file"
+        Write-Error "The path $OriginalPath does not exist or is not a file"
         UnMount-PSDrive -Name $local:PsDrive.Name -ErrorAction SilentlyContinue
         return
     }
@@ -830,6 +838,8 @@ function Get-7ZipArchive {
     # $Archiveクラスのインスタンスを返すラッパー関数
 
     if ($PSCmdlet.ParameterSetName -eq 'Path') {
+        # Path normalization
+        $Path = Convert-RelativePathToAbsolute -Path $Path
         try {
             $Archive = [Archive]::new($Path, $Password)
         }
@@ -980,7 +990,7 @@ function Test-ArchiveExistsAtDestination {
         else {
             $RelativePath = $Item.Path
         }
-        $AbsolutePath = Join-Path -Path $Destination -ChildPath $RelativePath
+        $AbsolutePath = Convert-RelativePathToAbsolute -Path $global:ExecutionContext.SessionState.Path.Combine($Destination, $RelativePath)
 
         $tParam = @{
             LiteralPath = $AbsolutePath
@@ -1135,6 +1145,7 @@ function Expand-7ZipArchive {
     }
 
     Process {
+        $Destination = Convert-RelativePathToAbsolute -Path $Destination
         if ($PSCmdlet.ParameterSetName -eq 'Class') {
             try {
                 $Archive.Extract($Destination, $Password, $IgnoreRoot)
@@ -1146,6 +1157,7 @@ function Expand-7ZipArchive {
         elseif ($PSCmdlet.ParameterSetName -eq 'Path') {
             foreach ($item in $Path) {
                 try {
+                    $item = Convert-RelativePathToAbsolute -Path $item
                     [Archive]::Extract($item, $Destination, $Password, $IgnoreRoot)
                 }
                 catch {
@@ -1223,6 +1235,7 @@ function Compress-7ZipArchive {
         }
 
         foreach ($o in $Object) {
+            $o = Convert-RelativePathToAbsolute -Path $o
             if ($PSCmdlet.ParameterSetName -eq 'Path') {
                 $Items = Get-Item -Path $o -ErrorAction SilentlyContinue
             }
@@ -1306,6 +1319,33 @@ function UnMount-PSDrive {
     if (![string]::IsNullOrWhiteSpace($Name)) {
         Remove-PSDrive -Name $Name
     }
+}
+
+function Convert-RelativePathToAbsolute {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param (
+        [Parameter(Mandatory, Position = 0)]
+        [ValidateLength(1, 32000)]
+        [string]
+        $Path
+    )
+
+    # Convert relative path to absolute path
+    $ResolvedPath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Path)
+
+    # Add "\\?\" prefix if the path is too long.
+    # https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation
+    if (($ResolvedPath.Length -gt 259) -and (-not $ResolvedPath.StartsWith('\\?\'))) {
+        if (([uri]$ResolvedPath).IsUnc) {
+            $ResolvedPath = '\\?\UNC\' + $ResolvedPath.Substring(2)
+        }
+        else {
+            $ResolvedPath = '\\?\' + $ResolvedPath
+        }
+    }
+
+    $ResolvedPath
 }
 
 
