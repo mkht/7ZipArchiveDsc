@@ -1172,6 +1172,19 @@ InModuleScope 'x7ZipArchive' {
             $ExpectResult = "\\?\UNC\server\foo\$LongString\baz"
             Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
         }
+
+        It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却(259文字以下)' {
+            $TestPath = "\\?\C:\foo\bar\baz"
+            $ExpectResult = $TestPath
+            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+        }
+
+        It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却(260文字以上)' {
+            $LongString = -join ((1..300).ForEach({ 'c' }))
+            $TestPath = "\\?\C:\foo\$LongString\baz"
+            $ExpectResult = $TestPath
+            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+        }
     }
     #endregion Tests for Convert-RelativePathToAbsolute
 
