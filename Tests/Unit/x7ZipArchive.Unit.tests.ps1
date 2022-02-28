@@ -1147,41 +1147,28 @@ InModuleScope 'x7ZipArchive' {
             Pop-Location
         }
 
-        It 'Pathが 絶対パス かつ 259文字以下 の場合はそのまま返却' {
-            $TestPath = 'C:\foo\bar\baz'
-            $ExpectResult = $TestPath
-            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-        }
-
-        It 'Pathが 相対パス かつ 259文字以下 の場合は絶対パスに変換して返却' {
-            $TestPath = '.\foo\bar\baz'
-            $ExpectResult = 'C:\Users\Public\foo\bar\baz'
-            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-        }
-
-        It 'Pathが260文字以上の場合は\\?\プリフィックスを付与して返却' {
+        It 'Pathが絶対パスの場合は\\?\プリフィックスを付与して返却' {
             $LongString = -join ((1..300).ForEach({ 'a' }))
             $TestPath = "C:\foo\$LongString\baz"
             $ExpectResult = '\\?\' + $TestPath
             Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
         }
 
-        It 'Pathが260文字以上かつUNCパスの場合は\\?\UNC\プリフィックスを付与して返却' {
+        It 'Pathが相対パスの場合は絶対パスに変換&\\?\プリフィックスを付与して返却' {
+            $TestPath = '.\foo\bar\baz'
+            $ExpectResult = '\\?\C:\Users\Public\foo\bar\baz'
+            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+        }
+
+        It 'PathがUNCパスの場合は\\?\UNC\プリフィックスを付与して返却' {
             $LongString = -join ((1..300).ForEach({ 'b' }))
             $TestPath = "\\server\foo\$LongString\baz"
             $ExpectResult = "\\?\UNC\server\foo\$LongString\baz"
             Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
         }
 
-        It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却(259文字以下)' {
+        It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却' {
             $TestPath = "\\?\C:\foo\bar\baz"
-            $ExpectResult = $TestPath
-            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-        }
-
-        It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却(260文字以上)' {
-            $LongString = -join ((1..300).ForEach({ 'c' }))
-            $TestPath = "\\?\C:\foo\$LongString\baz"
             $ExpectResult = $TestPath
             Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
         }

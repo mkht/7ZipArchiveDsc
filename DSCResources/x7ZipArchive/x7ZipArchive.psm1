@@ -1334,9 +1334,9 @@ function Convert-RelativePathToAbsolute {
     # Convert relative path to absolute path
     $ResolvedPath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Path)
 
-    # Add "\\?\" prefix if the path is too long.
+    # Add "\\?\" prefix for too long paths.
     # https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation
-    if (($ResolvedPath.Length -gt 259) -and (-not $ResolvedPath.StartsWith('\\?\'))) {
+    if (-not $ResolvedPath.StartsWith('\\?\')) {
         if (([uri]$ResolvedPath).IsUnc) {
             $ResolvedPath = '\\?\UNC\' + $ResolvedPath.Substring(2)
         }
