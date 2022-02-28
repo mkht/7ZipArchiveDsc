@@ -546,6 +546,12 @@ function Get-TargetResource {
     4. 展開済みであればEnsureにPresentをセットしたHashTableを、未展開であればEnsureにAbsentをセットしたHashTableを返す
     #>
 
+    # Enable extended long path support (if it does not enabled in current environment)
+    if (-not (Test-ExtendedLengthPathSupport)) {
+        $local:NeedToRevertExtendedLengthPathSupport = $true
+        Set-ExtendedLengthPathSupport -Enable $true
+    }
+
     $local:PsDrive = $null
     $OriginalPath = $Path
     $OriginalDestination = $Destination
@@ -593,6 +599,10 @@ function Get-TargetResource {
     }
     finally {
         UnMount-PSDrive -Name $local:PsDrive.Name -ErrorAction SilentlyContinue
+        if ($local:NeedToRevertExtendedLengthPathSupport) {
+            Set-ExtendedLengthPathSupport -Enable $false
+        }
+
     }
 
     if ($testResult) {
@@ -717,6 +727,12 @@ function Set-TargetResource {
     3. Expand-7ZipArchiveを呼び出してアーカイブをDestinationに展開する
     #>
 
+    # Enable extended long path support (if it does not enabled in current environment)
+    if (-not (Test-ExtendedLengthPathSupport)) {
+        $local:NeedToRevertExtendedLengthPathSupport = $true
+        Set-ExtendedLengthPathSupport -Enable $true
+    }
+
     $local:PsDrive = $null
     $OriginalPath = $Path
     # $OriginalDestination = $Destination
@@ -758,8 +774,10 @@ function Set-TargetResource {
     }
     finally {
         UnMount-PSDrive -Name $local:PsDrive.Name -ErrorAction SilentlyContinue
+        if ($local:NeedToRevertExtendedLengthPathSupport) {
+            Set-ExtendedLengthPathSupport -Enable $false
+        }
     }
-
 } # end of Set-TargetResource
 
 
@@ -1331,21 +1349,61 @@ function Convert-RelativePathToAbsolute {
         $Path
     )
 
+    $EXTENDED_PATH_PREFIX = '\\?\'
+
     # Convert relative path to absolute path
     $ResolvedPath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Path)
 
-    # Add "\\?\" prefix for too long paths.
+    # Add "\\?\" prefix for too long paths. (only when the system supports that)
     # https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation
-    if (-not $ResolvedPath.StartsWith('\\?\')) {
-        if (([uri]$ResolvedPath).IsUnc) {
-            $ResolvedPath = '\\?\UNC\' + $ResolvedPath.Substring(2)
-        }
-        else {
-            $ResolvedPath = '\\?\' + $ResolvedPath
+    if (Test-ExtendedLengthPathSupport) {
+        if (-not $ResolvedPath.StartsWith($EXTENDED_PATH_PREFIX)) {
+            if (([uri]$ResolvedPath).IsUnc) {
+                $ResolvedPath = $EXTENDED_PATH_PREFIX + 'UNC\' + $ResolvedPath.Substring(2)
+            }
+            else {
+                $ResolvedPath = $EXTENDED_PATH_PREFIX + $ResolvedPath
+            }
         }
     }
 
     $ResolvedPath
+}
+
+function Test-ExtendedLengthPathSupport {
+    try {
+        $null = [System.IO.Path]::GetFullPath('\\?\C:\extended_length_path_support_test.txt')
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+function Set-ExtendedLengthPathSupport {
+    param (
+        [Parameter(Mandatory, Position = 0)]
+        [bool]$Enable
+    )
+
+    $Disable = -not $Enable
+    [int32]$IntFlag = if ($Disable) { 1 }else { -1 }
+
+    $CurrentStatus = Test-ExtendedLengthPathSupport
+    if ($CurrentStatus -eq $Enable) {
+        return
+    }
+
+    $AppContextSwitches = [type]::GetType('System.AppContextSwitches')
+    if (-not $AppContextSwitches) {
+        Write-Error 'Could not find type System.AppContextSwitches'
+        return
+    }
+
+    [System.AppContext]::SetSwitch('Switch.System.IO.UseLegacyPathHandling', $Disable)
+    $InternalField = $AppContextSwitches.GetField('_useLegacyPathHandling', ([System.Reflection.BindingFlags]::Static -bor [System.Reflection.BindingFlags]::NonPublic))
+    $InternalField.SetValue($null, $IntFlag)
+    # Write-Verbose ('Set Extended Length Path feature as {0}.' -f $(if ($Enable) { 'Enabled' } else { 'Disabled' }))
 }
 
 

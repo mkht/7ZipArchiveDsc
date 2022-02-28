@@ -89,6 +89,7 @@ InModuleScope 'x7ZipArchive' {
             Context '展開先にアーカイブが展開されていない場合' {
 
                 Mock Test-ArchiveExistsAtDestination { return $false }
+                Mock Test-ExtendedLengthPathSupport { return $false }
 
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 $PathOfEmptyFolder = "TestDrive:\$script:TestGuid\EmptyFolder"
@@ -120,6 +121,8 @@ InModuleScope 'x7ZipArchive' {
 
                 Mock Mount-PSDriveWithCredential { @{Name = 'drivename' } } -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) }
                 Mock UnMount-PSDrive { }
+
+                Mock Test-ExtendedLengthPathSupport { return $false }
 
                 BeforeAll {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
@@ -288,6 +291,7 @@ InModuleScope 'x7ZipArchive' {
         Mock Expand-7ZipArchive -MockWith { } -ParameterFilter { $IgnoreRoot }
         Mock Expand-7ZipArchive -MockWith { } -ParameterFilter { $Force -eq $false }
         Mock Expand-7ZipArchive -MockWith { }
+        Mock Test-ExtendedLengthPathSupport { return $false }
 
         BeforeAll {
             Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
@@ -1147,30 +1151,63 @@ InModuleScope 'x7ZipArchive' {
             Pop-Location
         }
 
-        It 'Pathが絶対パスの場合は\\?\プリフィックスを付与して返却' {
-            $LongString = -join ((1..300).ForEach({ 'a' }))
-            $TestPath = "C:\foo\$LongString\baz"
-            $ExpectResult = '\\?\' + $TestPath
-            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+        Context 'When the system supports extended-length path' {
+            Mock Test-ExtendedLengthPathSupport { return $true }
+
+            It 'Pathが絶対パスの場合は\\?\プリフィックスを付与して返却' {
+                $LongString = -join ((1..300).ForEach({ 'a' }))
+                $TestPath = "C:\foo\$LongString\baz"
+                $ExpectResult = '\\?\' + $TestPath
+                Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+            }
+
+            It 'Pathが相対パスの場合は絶対パスに変換&\\?\プリフィックスを付与して返却' {
+                $TestPath = '.\foo\bar\baz'
+                $ExpectResult = '\\?\C:\Users\Public\foo\bar\baz'
+                Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+            }
+
+            It 'PathがUNCパスの場合は\\?\UNC\プリフィックスを付与して返却' {
+                $LongString = -join ((1..300).ForEach({ 'b' }))
+                $TestPath = "\\server\foo\$LongString\baz"
+                $ExpectResult = "\\?\UNC\server\foo\$LongString\baz"
+                Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+            }
+
+            It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却' {
+                $TestPath = "\\?\C:\foo\bar\baz"
+                $ExpectResult = $TestPath
+                Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+            }
         }
 
-        It 'Pathが相対パスの場合は絶対パスに変換&\\?\プリフィックスを付与して返却' {
-            $TestPath = '.\foo\bar\baz'
-            $ExpectResult = '\\?\C:\Users\Public\foo\bar\baz'
-            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-        }
+        Context 'When the system does NOT supports extended-length path' {
+            Mock Test-ExtendedLengthPathSupport { return $false }
 
-        It 'PathがUNCパスの場合は\\?\UNC\プリフィックスを付与して返却' {
-            $LongString = -join ((1..300).ForEach({ 'b' }))
-            $TestPath = "\\server\foo\$LongString\baz"
-            $ExpectResult = "\\?\UNC\server\foo\$LongString\baz"
-            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-        }
+            It 'Pathが絶対パスの場合はそのまま返却' {
+                $TestPath = "C:\foo\bar\baz"
+                $ExpectResult = $TestPath
+                Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+            }
 
-        It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却' {
-            $TestPath = "\\?\C:\foo\bar\baz"
-            $ExpectResult = $TestPath
-            Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+            It 'Pathが相対パスの場合は絶対パスに変換して返却' {
+                $TestPath = '.\foo\bar\baz'
+                $ExpectResult = 'C:\Users\Public\foo\bar\baz'
+                Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+            }
+
+            It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却' {
+                $TestPath = "\\?\C:\foo\bar\baz"
+                $ExpectResult = $TestPath
+                Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+            }
         }
     }
     #endregion Tests for Convert-RelativePathToAbsolute
