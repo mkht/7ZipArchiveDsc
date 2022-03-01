@@ -1151,10 +1151,49 @@ InModuleScope 'x7ZipArchive' {
             Pop-Location
         }
 
+        Context 'PowerShell 6 and later' {
+            Mock Test-ExtendedLengthPathSupport { return $true }
+
+            It 'Pathが絶対パスの場合はそのまま返却' {
+                if ($PSVersionTable.PSVersion.Major -lt 6) { Set-ItResult -Skipped }
+                $LongString = -join ((1..300).ForEach({ 'a' }))
+                $TestPath = "C:\foo\$LongString\baz"
+                $ExpectResult = $TestPath
+                Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 0 -Scope It -Exactly
+            }
+
+            It 'Pathが相対パスの場合は絶対パスに変換して返却' {
+                if ($PSVersionTable.PSVersion.Major -lt 6) { Set-ItResult -Skipped }
+                $TestPath = '.\foo\bar\baz'
+                $ExpectResult = 'C:\Users\Public\foo\bar\baz'
+                Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 0 -Scope It -Exactly
+            }
+
+            It 'PathがUNCパスの場合はそのまま返却' {
+                if ($PSVersionTable.PSVersion.Major -lt 6) { Set-ItResult -Skipped }
+                $LongString = -join ((1..300).ForEach({ 'b' }))
+                $TestPath = "\\server\foo\$LongString\baz"
+                $ExpectResult = $TestPath
+                Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 0 -Scope It -Exactly
+            }
+
+            It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却' {
+                if ($PSVersionTable.PSVersion.Major -lt 6) { Set-ItResult -Skipped }
+                $TestPath = '\\?\C:\foo\bar\baz'
+                $ExpectResult = $TestPath
+                Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
+                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 0 -Scope It -Exactly
+            }
+        }
+
         Context 'When the system supports extended-length path' {
             Mock Test-ExtendedLengthPathSupport { return $true }
 
             It 'Pathが絶対パスの場合は\\?\プリフィックスを付与して返却' {
+                if ($PSVersionTable.PSVersion.Major -ge 6) { Set-ItResult -Skipped }
                 $LongString = -join ((1..300).ForEach({ 'a' }))
                 $TestPath = "C:\foo\$LongString\baz"
                 $ExpectResult = '\\?\' + $TestPath
@@ -1163,6 +1202,7 @@ InModuleScope 'x7ZipArchive' {
             }
 
             It 'Pathが相対パスの場合は絶対パスに変換&\\?\プリフィックスを付与して返却' {
+                if ($PSVersionTable.PSVersion.Major -ge 6) { Set-ItResult -Skipped }
                 $TestPath = '.\foo\bar\baz'
                 $ExpectResult = '\\?\C:\Users\Public\foo\bar\baz'
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
@@ -1170,6 +1210,7 @@ InModuleScope 'x7ZipArchive' {
             }
 
             It 'PathがUNCパスの場合は\\?\UNC\プリフィックスを付与して返却' {
+                if ($PSVersionTable.PSVersion.Major -ge 6) { Set-ItResult -Skipped }
                 $LongString = -join ((1..300).ForEach({ 'b' }))
                 $TestPath = "\\server\foo\$LongString\baz"
                 $ExpectResult = "\\?\UNC\server\foo\$LongString\baz"
@@ -1178,6 +1219,7 @@ InModuleScope 'x7ZipArchive' {
             }
 
             It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却' {
+                if ($PSVersionTable.PSVersion.Major -ge 6) { Set-ItResult -Skipped }
                 $TestPath = '\\?\C:\foo\bar\baz'
                 $ExpectResult = $TestPath
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
@@ -1189,6 +1231,7 @@ InModuleScope 'x7ZipArchive' {
             Mock Test-ExtendedLengthPathSupport { return $false }
 
             It 'Pathが絶対パスの場合はそのまま返却' {
+                if ($PSVersionTable.PSVersion.Major -ge 6) { Set-ItResult -Skipped }
                 $TestPath = 'C:\foo\bar\baz'
                 $ExpectResult = $TestPath
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
@@ -1196,6 +1239,7 @@ InModuleScope 'x7ZipArchive' {
             }
 
             It 'Pathが相対パスの場合は絶対パスに変換して返却' {
+                if ($PSVersionTable.PSVersion.Major -ge 6) { Set-ItResult -Skipped }
                 $TestPath = '.\foo\bar\baz'
                 $ExpectResult = 'C:\Users\Public\foo\bar\baz'
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
@@ -1203,6 +1247,7 @@ InModuleScope 'x7ZipArchive' {
             }
 
             It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却' {
+                if ($PSVersionTable.PSVersion.Major -ge 6) { Set-ItResult -Skipped }
                 $TestPath = '\\?\C:\foo\bar\baz'
                 $ExpectResult = $TestPath
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
