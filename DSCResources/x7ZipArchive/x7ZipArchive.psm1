@@ -1356,13 +1356,18 @@ function Convert-RelativePathToAbsolute {
 
     # Add "\\?\" prefix for too long paths. (only when the system supports that)
     # https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation
-    if (Test-ExtendedLengthPathSupport) {
-        if (-not $ResolvedPath.StartsWith($EXTENDED_PATH_PREFIX)) {
-            if (([uri]$ResolvedPath).IsUnc) {
-                $ResolvedPath = $EXTENDED_PATH_PREFIX + 'UNC\' + $ResolvedPath.Substring(2)
-            }
-            else {
-                $ResolvedPath = $EXTENDED_PATH_PREFIX + $ResolvedPath
+    # However, in PowerShell 6 and later, the prefix is not required.
+    # Rather, in PowerShell 7.1 and later, it should not be added, because it will cause inconsistent behavior.
+    # https://github.com/PowerShell/PowerShell/issues/10805
+    if ($PSVersionTable.PSVersion.Major -lt 6) {
+        if (Test-ExtendedLengthPathSupport) {
+            if (-not $ResolvedPath.StartsWith($EXTENDED_PATH_PREFIX)) {
+                if (([uri]$ResolvedPath).IsUnc) {
+                    $ResolvedPath = $EXTENDED_PATH_PREFIX + 'UNC\' + $ResolvedPath.Substring(2)
+                }
+                else {
+                    $ResolvedPath = $EXTENDED_PATH_PREFIX + $ResolvedPath
+                }
             }
         }
     }
