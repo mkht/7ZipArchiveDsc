@@ -446,6 +446,86 @@ try {
                 $files | Where-Object { $_.PsIsContainer } | Should -HaveCount 2
             }
         }
+
+        Context '260文字を超えるパスでの動作' {
+
+            $config = Join-Path $PSScriptRoot '07_ZipExpand_LongPath.config.ps1'
+
+            BeforeAll {
+                $LongName = 'a4cffe08-444f-4e4e-8ec1-79b91b9f803e-5e4fc109-dbd2-4f29-bbcc-8722304c397e-9280fbca-4aa6-4f02-bd94-fd5742f0a34f-1658b2e4-8122-41eb-99a2-c41f7122ad95-29fc9a27-99fc-498c-ab8f-0c7e084bb6ce-ab55af1d-c9e8-4c9c-920d-682ea39ff8dc'
+                $Destination = (Join-Path $TestDrive $script:TestGuid)
+                $Destination = $Destination + "\$LongName\$LongName\$LongName\Destination"
+            }
+
+            AfterAll {
+                $Target = (Join-Path $TestDrive "$script:TestGuid\$LongName")
+                if ($PSVersionTable.PSVersion.Major -lt 6) {
+                    $Target = '\\?\' + $Target
+                }
+                Remove-Item -LiteralPath $Target -Recurse -force -ErrorAction SilentlyContinue
+            }
+
+            It 'Should compile and apply the MOF without throwing' {
+                {
+                    . $config
+
+                    $configurationParameters = @{
+                        OutputPath        = $TestDrive
+                        ConfigurationData = $ConfigurationData
+                    }
+
+                    & $configurationName @configurationParameters
+
+                    $startDscConfigurationParameters = @{
+                        Path         = $TestDrive
+                        ComputerName = 'localhost'
+                        Wait         = $true
+                        Verbose      = $script:ShowDscVerboseMsg
+                        Force        = $true
+                        ErrorAction  = 'Stop'
+                    }
+
+                    Start-DscConfiguration @startDscConfigurationParameters
+                } | Should -Not -Throw
+            }
+
+            It 'Should be able to call Get-DscConfiguration without throwing' {
+                {
+                    $script:currentConfiguration = Get-DscConfiguration -Verbose:$script:ShowDscVerboseMsg -ErrorAction Stop
+                } | Should -Not -Throw
+            }
+
+            It 'Should have set the resource and all the parameters should match' {
+                $resourceCurrentState = $script:currentConfiguration | Where-Object -FilterScript {
+                    $_.ConfigurationName -eq $configurationName `
+                        -and $_.ResourceId -eq "[x7ZipArchive]Integration_Test"
+                }
+
+                $LongName = 'a4cffe08-444f-4e4e-8ec1-79b91b9f803e-5e4fc109-dbd2-4f29-bbcc-8722304c397e-9280fbca-4aa6-4f02-bd94-fd5742f0a34f-1658b2e4-8122-41eb-99a2-c41f7122ad95-29fc9a27-99fc-498c-ab8f-0c7e084bb6ce-ab55af1d-c9e8-4c9c-920d-682ea39ff8dc'
+                $Destination = (Join-Path $TestDrive $script:TestGuid)
+                $Destination = $Destination + "\$LongName\$LongName\$LongName\Destination"
+
+                $resourceCurrentState.Ensure | Should -Be 'Present'
+                $resourceCurrentState.Path | Should -Be (Join-Path $TestDrive "$script:TestGuid\TestLongPath.zip")
+                $resourceCurrentState.Destination | Should -Be $Destination
+            }
+
+            It 'Should return $true when Test-DscConfiguration is run' {
+                Test-DscConfiguration -Verbose:$script:ShowDscVerboseMsg | Should -Be $true
+            }
+
+            It 'Should be expanded archive to destination' {
+                $LongName = 'a4cffe08-444f-4e4e-8ec1-79b91b9f803e-5e4fc109-dbd2-4f29-bbcc-8722304c397e-9280fbca-4aa6-4f02-bd94-fd5742f0a34f-1658b2e4-8122-41eb-99a2-c41f7122ad95-29fc9a27-99fc-498c-ab8f-0c7e084bb6ce-ab55af1d-c9e8-4c9c-920d-682ea39ff8dc'
+                $Destination = (Join-Path $TestDrive $script:TestGuid)
+                $Destination = $Destination + "\$LongName\$LongName\$LongName\Destination"
+                if ($PSVersionTable.PSVersion.Major -lt 6) {
+                    $Destination = '\\?\' + $Destination
+                }
+                Test-Path -LiteralPath $Destination | Should -Be $true
+                $item = Get-Item -LiteralPath ($Destination + '\Hello Archive.txt')
+                Get-Content -LiteralPath $item -Raw | Should -Be 'Hello Archive!'
+            }
+        }
     }
     #endregion
 
