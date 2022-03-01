@@ -126,6 +126,9 @@ PS> Get-Item "C:\Archive.zip" | Expand-7ZipArchive -Destination "C:\Destination"
 
 
 ## Changelog
+### 1.7.0
+  - Improve long path support
+
 ### 1.6.0
   - Add support for paths longer than 260 characters. [#6](https://github.com/mkht/7ZipArchiveDsc/issues/6)
   - Better English messages.
