@@ -126,6 +126,9 @@ PS> Get-Item "C:\Archive.zip" | Expand-7ZipArchive -Destination "C:\Destination"
 
 
 ## Changelog
+### 1.8.0
+  - 7z.exe updated to 22.00
+
 ### 1.7.0
   - Improve long path support
 
