@@ -35,6 +35,7 @@ This resource uses [7-Zip](https://www.7-zip.org/) utility for expand an archive
     + The Checksum method to use to validate whether or not a file at the destination with the same name as a file in the archive actually matches that corresponding file in the archive.
     + An exception will be thrown if Checksum is specified while Validate is specified as false. 
     + The default value is `ModifiedDate`. { ModifiedDate | Size | CRC }
+    > * When ModifiedDate is specified, milliseconds in the time information are truncated and compared.
 
 + **[bool] IgnoreRoot** (Write):
     + When the IgnoreRoot is specified as true, this resource will expand files in the root directory of the archive to the destination.

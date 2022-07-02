@@ -22,7 +22,6 @@ jobs:
         run: |
           $PSVersionTable
           Get-ChildItem 'env:' | Format-Table -AutoSize -Wrap
-          Get-Module -ListAvailable
 
       - name: Unit Tests
         run: Invoke-Pester -Tag 'Unit' -EnableExit

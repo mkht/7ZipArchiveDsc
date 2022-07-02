@@ -1031,8 +1031,11 @@ function Test-ArchiveExistsAtDestination {
                 # See http://support.microsoft.com/kb/932955 and https://devblogs.microsoft.com/oldnewthing/?p=42053
                 $CurrentFileModifiedDate = $CurrentFileModifiedDateUtc.Add([System.TimeZone]::CurrentTimeZone.GetUtcOffset([datetime]::Now))
 
+                # Truncate milliseconds of the ModifiedDate property of the file in the archive
+                $ArchiveileModifiedDate = [datetime]::new($Item.Modified.Year, $Item.Modified.Month, $Item.Modified.Day, $Item.Modified.Hour, $Item.Modified.Minute, $Item.Modified.Second, $Item.Modified.Kind)
+
                 # Compare datetime
-                if ($CurrentFileModifiedDate -ne $Item.Modified) {
+                if ($CurrentFileModifiedDate -ne $ArchiveileModifiedDate) {
                     Write-Verbose ('The modified date of "{0}" is not same.' -f $Item.Path)
                     Write-Verbose ('Exist:{0} / Archive:{1}' -f $CurrentFileModifiedDate, $Item.Modified)
                     return $false
