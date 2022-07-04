@@ -565,7 +565,7 @@ function Get-TargetResource {
     }
 
     if ($Credential) {
-        $local:PsDrive = Mount-PSDriveWithCredential -Root (Split-Path $Path -Parent) -Credential $Credential -ErrorAction Stop
+        $local:PsDrive = Mount-PSDriveWithCredential -Root (Split-Path $OriginalPath -Parent) -Credential $Credential -ErrorAction Stop
     }
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore)) {
@@ -746,7 +746,7 @@ function Set-TargetResource {
     }
 
     if ($Credential) {
-        $local:PsDrive = Mount-PSDriveWithCredential -Root (Split-Path $Path -Parent) -Credential $Credential -ErrorAction Stop
+        $local:PsDrive = Mount-PSDriveWithCredential -Root (Split-Path $OriginalPath -Parent) -Credential $Credential -ErrorAction Stop
     }
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore)) {
