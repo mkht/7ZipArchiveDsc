@@ -58,8 +58,8 @@ class Archive {
         $this.FileInfo = [FileInfo]::new($this.Path)
         $this.FileList = [Archive]::GetFileList($this.Path, $Password)
 
-        $this.Files = @($this.FileList | Where-Object { $_.ItemType -eq 'File' }).Count
         $this.Folders = @($this.FileList | Where-Object { $_.ItemType -eq 'Folder' }).Count
+        $this.Files = $this.FileList.Count - $this.Folders
     }
 
     [List[Object]]GetFileList() {
