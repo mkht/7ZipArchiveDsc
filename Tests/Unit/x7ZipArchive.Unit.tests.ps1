@@ -424,7 +424,7 @@ InModuleScope 'x7ZipArchive' {
                     $Result = (Get-7ZipArchive -Path $PathOfArchive).FileList
 
                     $Result.Path | Should -Be 'Hello Archive.txt'
-                    $Result.Size | Should -BeOfType 'int'
+                    $Result.Size | Should -BeOfType 'long'
                     $Result.Size | Should -Be 14
                     $Result.ItemType | Should -Be 'File'
                     $Result.Modified | Should -BeOfType 'DateTime'
@@ -447,7 +447,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $ContentInResult = $Result | Where-Object { $_.Path -match '002.txt' }
                     $ContentInResult.Path | Should -Be 'root\Folder\002.txt'
-                    $ContentInResult.Size | Should -BeOfType 'int'
+                    $ContentInResult.Size | Should -BeOfType 'long'
                     $ContentInResult.Size | Should -Be 6
                     $ContentInResult.ItemType | Should -Be 'File'
                     $ContentInResult.Modified | Should -BeOfType 'DateTime'
