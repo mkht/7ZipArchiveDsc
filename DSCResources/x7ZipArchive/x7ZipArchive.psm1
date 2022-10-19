@@ -1,5 +1,6 @@
 ﻿#Requires -Version 5
 using namespace System.IO
+using namespace System.Collections.Generic
 
 $script:Crc16 = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\CRC16\CRC16.cs'
 $script:Crc32NET = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '\Libs\Crc32.NET\Crc32.NET.dll'
@@ -38,7 +39,7 @@ class Archive {
     [long] $Files = 0
     [long] $Folders = 0
     [FileInfo] $FileInfo
-    [Object[]] $FileList
+    [List[Object]] $FileList
 
     Archive([string]$Path) {
         $this.Init($Path, $null)
@@ -49,26 +50,19 @@ class Archive {
     }
 
     Hidden [void]Init([string]$Path, [securestring]$Password) {
+        $this.FileList = [List[Object]]::new()
         $this.Path = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Path)
 
-        $info = [Archive]::TestArchive($Path, $Password) |`
-            ForEach-Object { $_.Replace('\', '\\') } |`
-            ForEach-Object { if ($_ -notmatch '=') { $_.Replace(':', ' =') }else { $_ } } |`
-            Where-Object { $_ -match '^.+=.+$' } |`
-            ConvertFrom-StringData
-
+        $info = [Archive]::GetArchiveInfo($Path, $Password)
         $this.Type = [string]$info.Type
-        if ([long]::TryParse($info.Files, [ref]$null)) {
-            $this.Files = [long]::Parse($info.Files)
-        }
-        if ([long]::TryParse($info.Folders, [ref]$null)) {
-            $this.Folders = [long]::Parse($info.Folders)
-        }
         $this.FileInfo = [FileInfo]::new($this.Path)
         $this.FileList = [Archive]::GetFileList($this.Path, $Password)
+
+        $this.Files = @($this.FileList | Where-Object { $_.ItemType -eq 'File' }).Count
+        $this.Folders = @($this.FileList | Where-Object { $_.ItemType -eq 'Folder' }).Count
     }
 
-    [Object[]]GetFileList() {
+    [List[Object]]GetFileList() {
         return $this.FileList
     }
 
@@ -107,11 +101,52 @@ class Archive {
         return $msg
     }
 
-    static [Object[]]GetFileList([string]$Path) {
+    Hidden static [HashTable]GetArchiveInfo([string]$Path) {
+        return [Archive]::GetArchiveInfo($Path, $null)
+    }
+
+    Hidden static [HashTable]GetArchiveInfo([string]$Path, [securestring]$Password) {
+        $LiteralPath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Path)
+        $NewLine = [System.Environment]::NewLine
+        if (-not (Test-Path -LiteralPath $LiteralPath -PathType Leaf -ErrorAction Ignore)) {
+            throw [FileNotFoundException]::new()
+        }
+
+        $pPwd = [string]::Empty
+        if ($Password) {
+            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
+            $pPwd = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+        }
+
+        # Get archive info
+        $msg = $null
+        $currentEA = $global:ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            $msg = & $script:7zExe l "$LiteralPath" -p"$pPwd" 2>&1
+        }
+        catch { }
+        finally {
+            $global:ErrorActionPreference = $currentEA
+        }
+        if ($LASTEXITCODE -ne [ExitCode]::Success) {
+            throw [System.ArgumentException]::new($msg -join $NewLine)
+        }
+
+        return ($msg | Select-String -Pattern '^--$' -Context 0, 8 | Select -First 1).Context.DisplayPostContext |`
+            Select-String -Pattern '^.+=.+$' |`
+            Select-Object -ExpandProperty Line |`
+            ForEach-Object { $_.Replace('\', '\\') } |`
+            Out-String |`
+            ConvertFrom-StringData
+    }
+
+    static [List[Object]]GetFileList([string]$Path) {
         return [Archive]::GetFileList($Path, $null)
     }
 
-    static [Object[]]GetFileList([string]$Path, [securestring]$Password) {
+    static [List[Object]]GetFileList([string]$Path, [securestring]$Password) {
+        $FList = [List[Object]]::new()
         $LiteralPath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($Path)
         $NewLine = [System.Environment]::NewLine
         Write-Verbose 'Enumerating files & folders in the archive.'
@@ -137,7 +172,7 @@ class Archive {
             throw [System.InvalidOperationException]::new($ret -join $NewLine)
         }
 
-        return ($ret -join $NewLine).Replace('\', '\\') -split "$NewLine$NewLine" |`
+        ($ret -join $NewLine).Replace('\', '\\') -split "$NewLine$NewLine" |`
             ConvertFrom-StringData |`
             ForEach-Object {
             $tmp = $_
@@ -182,8 +217,9 @@ class Archive {
                 $tmp.Offset = [long]$_.Offset
             }
 
-            [PSCustomObject]$tmp
+            $FList.Add([PSCustomObject]$tmp)
         }
+        return $FList
     }
 
     [void]Extract([string]$Destination) {
@@ -1244,7 +1280,7 @@ function Compress-7ZipArchive {
     )
 
     Begin {
-        $FileList = New-Object 'System.Collections.Generic.HashSet[string]'
+        $FileList = [HashSet[string]]::new()
     }
 
     Process {
