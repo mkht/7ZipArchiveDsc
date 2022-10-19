@@ -35,8 +35,8 @@ Enum ExitCode {
 class Archive {
     [string] $Path
     [string] $Type
-    [int] $Files = 0
-    [int] $Folders = 0
+    [long] $Files = 0
+    [long] $Folders = 0
     [FileInfo] $FileInfo
     [Object[]] $FileList
 
@@ -58,11 +58,11 @@ class Archive {
             ConvertFrom-StringData
 
         $this.Type = [string]$info.Type
-        if ([int]::TryParse($info.Files, [ref]$null)) {
-            $this.Files = [int]::Parse($info.Files)
+        if ([long]::TryParse($info.Files, [ref]$null)) {
+            $this.Files = [long]::Parse($info.Files)
         }
-        if ([int]::TryParse($info.Folders, [ref]$null)) {
-            $this.Folders = [int]::Parse($info.Folders)
+        if ([long]::TryParse($info.Folders, [ref]$null)) {
+            $this.Folders = [long]::Parse($info.Folders)
         }
         $this.FileInfo = [FileInfo]::new($this.Path)
         $this.FileList = [Archive]::GetFileList($this.Path, $Password)
@@ -142,7 +142,7 @@ class Archive {
             ForEach-Object {
             $tmp = $_
 
-            $tmp.Size = [int]$_.Size
+            $tmp.Size = [long]$_.Size
             $tmp.Encrypted = [bool]($_.Encrypted -eq '+')
 
             if ($_.Modified) {
@@ -158,7 +158,7 @@ class Archive {
             }
 
             if ($_.'Packed Size') {
-                $tmp.'Packed Size' = [int]$_.'Packed Size'
+                $tmp.'Packed Size' = [long]$_.'Packed Size'
             }
 
             if ($_.Folder) {
@@ -175,11 +175,11 @@ class Archive {
             }
 
             if ($_.'Volume Index') {
-                $tmp.'Volume Index' = [int]$_.'Volume Index'
+                $tmp.'Volume Index' = [long]$_.'Volume Index'
             }
 
             if ($_.Offset) {
-                $tmp.Offset = [int]$_.Offset
+                $tmp.Offset = [long]$_.Offset
             }
 
             [PSCustomObject]$tmp
