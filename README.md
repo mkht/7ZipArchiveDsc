@@ -127,6 +127,9 @@ PS> Get-Item "C:\Archive.zip" | Expand-7ZipArchive -Destination "C:\Destination"
 
 
 ## Changelog
+### 1.9.0
+  - 7-Zip updated to 23.01
+
 ### 1.8.2
   - Fixed an issue where extraction would fail if the archive contained files larger than 2GB. [#7](https://github.com/mkht/7ZipArchiveDsc/issues/7)
   - Improve performance.
