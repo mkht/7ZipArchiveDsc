@@ -127,6 +127,9 @@ PS> Get-Item "C:\Archive.zip" | Expand-7ZipArchive -Destination "C:\Destination"
 
 
 ## Changelog
+### 1.9.1
+  - The process of specifying `IgnoreRoot` would fail in environments where certain anti-virus software is installed.
+
 ### 1.9.0
   - 7-Zip updated to 23.01
 

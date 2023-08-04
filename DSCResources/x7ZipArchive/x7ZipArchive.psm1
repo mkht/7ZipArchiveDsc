@@ -330,6 +330,9 @@ class Archive {
 
         if ($IgnoreRoot) {
             try {
+                # In some anti-virus software, real-time file scanning seems to grab files for a long time and Move-Item fails.
+                # As a workaround, insert a wait time of 1.5 seconds.
+                Start-Sleep -Milliseconds 1500
                 Get-ChildItem -LiteralPath $Destination -Force | Move-Item -Destination $FinalDestination -Force -ErrorAction Stop
             }
             finally {
