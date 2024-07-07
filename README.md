@@ -1,6 +1,6 @@
 # 7ZipArchiveDsc
 
-![7ZipArchiveDsc](https://github.com/mkht/7ZipArchiveDsc/workflows/7ZipArchiveDsc/badge.svg)
+[![7ZipArchiveDsc](https://github.com/mkht/7ZipArchiveDsc/actions/workflows/test.yml/badge.svg)](https://github.com/mkht/7ZipArchiveDsc/actions/workflows/test.yml)
 
 PowerShell DSC Resource to expand an archive file to a specific path. 
 
