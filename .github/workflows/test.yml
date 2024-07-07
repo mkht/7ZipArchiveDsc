@@ -10,7 +10,7 @@ jobs:
         shell: powershell
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Pester
         run: Install-Module Pester -MaximumVersion 4.10.1 -Force -AllowClobber -Scope CurrentUser -SkipPublisherCheck
@@ -36,7 +36,7 @@ jobs:
         shell: pwsh
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Pester
         run: Install-Module Pester -MaximumVersion 4.10.1 -Force -AllowClobber -Scope CurrentUser -SkipPublisherCheck
