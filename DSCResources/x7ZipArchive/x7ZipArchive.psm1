@@ -299,7 +299,6 @@ class Archive {
             }
         }
         else {
-            $global:PSStyle.Progress.View = 'Classic'
             $currentEA = $global:ErrorActionPreference
             try {
                 $ErrorActionPreference = 'Continue'
