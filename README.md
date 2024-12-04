@@ -127,6 +127,9 @@ PS> Get-Item "C:\Archive.zip" | Expand-7ZipArchive -Destination "C:\Destination"
 
 
 ## Changelog
+### 2.1.0
+  - 7-Zip updated to 24.09
+
 ### 2.0.0
   - 7-Zip updated to 24.07
 
