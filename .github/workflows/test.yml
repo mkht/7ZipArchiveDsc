@@ -12,6 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Install Pester 6
+        run: Install-Module Pester -RequiredVersion 6.2.0 -Repository PSGallery -Scope CurrentUser -Force -SkipPublisherCheck
+
       - name: Configure WinRM
         run: winrm quickconfig -quiet
 
@@ -21,10 +24,24 @@ jobs:
           Get-ChildItem 'env:' | Format-Table -AutoSize -Wrap
 
       - name: Unit Tests
-        run: Invoke-Pester -Tag 'Unit' -EnableExit
+        run: |
+          Import-Module Pester -RequiredVersion 6.2.0
+          $configuration = New-PesterConfiguration
+          $configuration.Run.Path = './Tests/Unit'
+          $configuration.Run.Exit = $true
+          $configuration.Filter.Tag = 'Unit'
+          $configuration.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $configuration
 
       - name: Integration Tests
-        run: Invoke-Pester -Tag 'Integration' -EnableExit
+        run: |
+          Import-Module Pester -RequiredVersion 6.2.0
+          $configuration = New-PesterConfiguration
+          $configuration.Run.Path = './Tests/Integration'
+          $configuration.Run.Exit = $true
+          $configuration.Filter.Tag = 'Integration'
+          $configuration.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $configuration
 
   Tests_PowerShell_7:
     runs-on: windows-latest
@@ -34,6 +51,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+
+      - name: Install Pester 6
+        run: Install-Module Pester -RequiredVersion 6.2.0 -Repository PSGallery -Scope CurrentUser -Force -SkipPublisherCheck
 
       - name: Install PSDesiredStateConfiguration
         run: Install-Module PSDesiredStateConfiguration -Repository PSGallery -MaximumVersion 2.99 -Force -AllowClobber
@@ -48,7 +68,21 @@ jobs:
           Get-Module -ListAvailable
 
       - name: Unit Tests
-        run: Invoke-Pester -Tag 'Unit' -EnableExit
+        run: |
+          Import-Module Pester -RequiredVersion 6.2.0
+          $configuration = New-PesterConfiguration
+          $configuration.Run.Path = './Tests/Unit'
+          $configuration.Run.Exit = $true
+          $configuration.Filter.Tag = 'Unit'
+          $configuration.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $configuration
 
       - name: Integration Tests
-        run: Invoke-Pester -Tag 'Integration' -EnableExit
+        run: |
+          Import-Module Pester -RequiredVersion 6.2.0
+          $configuration = New-PesterConfiguration
+          $configuration.Run.Path = './Tests/Integration'
+          $configuration.Run.Exit = $true
+          $configuration.Filter.Tag = 'Integration'
+          $configuration.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $configuration

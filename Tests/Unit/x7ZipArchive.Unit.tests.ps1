@@ -1,29 +1,28 @@
-﻿#region HEADER
-# Requires Pester 4.2.0 or higher
-$newestPesterVersion = [System.Version]((Get-Module Pester -ListAvailable).Version | Sort-Object -Descending | Select-Object -First 1)
-if ($newestPesterVersion -lt '4.2.0') { throw 'Pester 4.2.0 or higher is required.' }
+﻿#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
-$script:moduleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-Import-Module (Join-Path $script:moduleRoot '\DSCResources\x7ZipArchive\x7ZipArchive.psm1') -Force
-$global:TestData = Join-Path (Split-Path -Parent $PSScriptRoot) '\TestData'
-#endregion HEADER
+BeforeDiscovery {
+    # InModuleScope needs the resource module during discovery.
+    $moduleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+    Import-Module (Join-Path $moduleRoot 'DSCResources\x7ZipArchive\x7ZipArchive.psm1') -Force
+}
 
 #region Begin Testing
 InModuleScope 'x7ZipArchive' {
-    #region Set variables for testing
-    $script:TestGuid = [Guid]::NewGuid()
-    $testUsername = 'TestUsername'
-    $testPassword = 'TestPassword'
-    $secureTestPassword = ConvertTo-SecureString -String $testPassword -AsPlainText -Force
-    $script:TestCredential = New-Object -TypeName 'System.Management.Automation.PSCredential' -ArgumentList @( $testUsername, $secureTestPassword )
-    #endregion Set variables for testing
+    BeforeAll {
+        $script:TestData = Join-Path (Split-Path -Parent $PSScriptRoot) 'TestData'
+        $script:TestGuid = [Guid]::NewGuid()
+        $testUsername = 'TestUsername'
+        $testPassword = 'TestPassword'
+        $secureTestPassword = ConvertTo-SecureString -String $testPassword -AsPlainText -Force
+        $script:TestCredential = New-Object -TypeName 'System.Management.Automation.PSCredential' -ArgumentList @( $testUsername, $secureTestPassword )
+    }
 
 
     #region Tests for Get-TargetResource
     Describe 'x7ZipArchive/Get-TargetResource' -Tag 'Unit' {
 
         BeforeAll {
-            Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
+            Copy-Item -Path $script:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
             $ErrorActionPreference = 'Stop'
         }
 
@@ -68,7 +67,6 @@ InModuleScope 'x7ZipArchive' {
                 { Get-TargetResource @getParam } | Should -Throw 'Please specify the Validate parameter as true to use the Checksum parameter.'
             }
 
-
             It 'Test-ArchiveExistsAtDestinationで例外発生した場合は例外発生' {
                 Mock Test-ArchiveExistsAtDestination -MockWith { throw 'Exception' }
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
@@ -80,7 +78,7 @@ InModuleScope 'x7ZipArchive' {
                 }
 
                 { Get-TargetResource @getParam } | Should -Throw
-                Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Exactly -Scope It
+                Should -Invoke -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Exactly -Scope It
             }
         }
 
@@ -88,12 +86,16 @@ InModuleScope 'x7ZipArchive' {
 
             Context '展開先にアーカイブが展開されていない場合' {
 
-                Mock Test-ArchiveExistsAtDestination { return $false }
-                Mock Test-ExtendedLengthPathSupport { return $true }
+                BeforeAll {
+                    $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                    $PathOfEmptyFolder = "TestDrive:\$script:TestGuid\EmptyFolder"
+                    New-Item -Path $PathOfEmptyFolder -ItemType Container >$null
+                }
 
-                $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                $PathOfEmptyFolder = "TestDrive:\$script:TestGuid\EmptyFolder"
-                New-Item -Path $PathOfEmptyFolder -ItemType Container >$null
+                BeforeEach {
+                    Mock Test-ArchiveExistsAtDestination { return $false }
+                    Mock Test-ExtendedLengthPathSupport { return $true }
+                }
 
                 It 'EnsureプロパティがAbsentのHashTableを返す' {
                     $getParam = @{
@@ -103,7 +105,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $result = Get-TargetResource @getParam
 
-                    Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Scope It
                     $result | Should -BeOfType 'HashTable'
                     $result.Ensure | Should -Be 'Absent'
                     $result.Path | Should -Be $PathOfArchive
@@ -113,16 +115,16 @@ InModuleScope 'x7ZipArchive' {
 
             Context '展開先にアーカイブが展開済みの場合' {
 
-                Mock Test-ArchiveExistsAtDestination { return $true } -ParameterFilter { -not $Checksum }
-                Mock Test-ArchiveExistsAtDestination { return $true } -ParameterFilter { $IgnoreRoot }
-                Mock Test-ArchiveExistsAtDestination { return $true } -ParameterFilter { $Checksum -eq 'ModifiedDate' }
-                Mock Test-ArchiveExistsAtDestination { return $false } -ParameterFilter { $Checksum -eq 'Size' }
-                Mock Test-ArchiveExistsAtDestination { return $false }
-
-                Mock Mount-PSDriveWithCredential { @{Name = 'drivename' } } -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) }
-                Mock UnMount-PSDrive { }
-
-                Mock Test-ExtendedLengthPathSupport { return $true }
+                BeforeEach {
+                    Mock Test-ArchiveExistsAtDestination { return $true } -ParameterFilter { -not $Checksum }
+                    Mock Test-ArchiveExistsAtDestination { return $true } -ParameterFilter { $IgnoreRoot }
+                    Mock Test-ArchiveExistsAtDestination { return $true } -ParameterFilter { $Checksum -eq 'ModifiedDate' }
+                    Mock Test-ArchiveExistsAtDestination { return $false } -ParameterFilter { $Checksum -eq 'Size' }
+                    Mock Test-ArchiveExistsAtDestination { return $false }
+                    Mock Mount-PSDriveWithCredential { @{Name = 'drivename' } } -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) }
+                    Mock UnMount-PSDrive { }
+                    Mock Test-ExtendedLengthPathSupport { return $true }
+                }
 
                 BeforeAll {
                     $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
@@ -132,8 +134,11 @@ InModuleScope 'x7ZipArchive' {
                 }
 
                 Context 'Validateが指定されていない場合' {
-                    $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $PathOfAlreadyExpanded = "TestDrive:\$script:TestGuid\AlreadyExpanded"
+
+                    BeforeAll {
+                        $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                        $PathOfAlreadyExpanded = "TestDrive:\$script:TestGuid\AlreadyExpanded"
+                    }
 
                     It 'EnsureプロパティがPresentのHashTableを返す' {
                         $getParam = @{
@@ -143,7 +148,7 @@ InModuleScope 'x7ZipArchive' {
 
                         $result = Get-TargetResource @getParam
 
-                        Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Scope It
+                        Should -Invoke -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Scope It
 
                         $result.Ensure | Should -Be 'Present'
                         $result.Path | Should -Be $PathOfArchive
@@ -159,7 +164,7 @@ InModuleScope 'x7ZipArchive' {
 
                         $result = Get-TargetResource @getParam
 
-                        Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -ParameterFilter { $IgnoreRoot } -Times 1 -Scope It
+                        Should -Invoke -CommandName 'Test-ArchiveExistsAtDestination' -ParameterFilter { $IgnoreRoot } -Times 1 -Scope It
 
                         $result.Ensure | Should -Be 'Present'
                         $result.Path | Should -Be $PathOfArchive
@@ -175,9 +180,9 @@ InModuleScope 'x7ZipArchive' {
 
                         $result = Get-TargetResource @getParam
 
-                        Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Scope It
-                        Assert-MockCalled -CommandName 'Mount-PSDriveWithCredential' -Times 1 -Exactly -Scope It
-                        Assert-MockCalled -CommandName 'UnMount-PSDrive' -Times 1 -Exactly -Scope It
+                        Should -Invoke -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Scope It
+                        Should -Invoke -CommandName 'Mount-PSDriveWithCredential' -Times 1 -Exactly -Scope It
+                        Should -Invoke -CommandName 'UnMount-PSDrive' -Times 1 -Exactly -Scope It
 
                         $result.Ensure | Should -Be 'Present'
                         $result.Path | Should -Be $PathOfArchive
@@ -194,8 +199,8 @@ InModuleScope 'x7ZipArchive' {
 
                         { Get-TargetResource @getParam } | Should -Throw ('The path {0} does not exist or is not a file' -f $PathNotExist)
 
-                        Assert-MockCalled -CommandName 'Mount-PSDriveWithCredential' -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) } -Times 1 -Exactly -Scope It
-                        Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -Times 0 -Scope It
+                        Should -Invoke -CommandName 'Mount-PSDriveWithCredential' -ParameterFilter { $Credential -and ($Credential.UserName -eq $script:TestCredential.UserName) } -Times 1 -Exactly -Scope It
+                        Should -Invoke -CommandName 'Test-ArchiveExistsAtDestination' -Times 0 -Scope It
                     }
                 }
 
@@ -214,7 +219,7 @@ InModuleScope 'x7ZipArchive' {
 
                         $result = Get-TargetResource @getParam
 
-                        Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Scope It
+                        Should -Invoke -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Scope It
 
                         $result.Ensure | Should -Be 'Present'
                         $result.Path | Should -Be $PathOfArchive
@@ -233,7 +238,7 @@ InModuleScope 'x7ZipArchive' {
 
                         $result = Get-TargetResource @getParam
 
-                        Assert-MockCalled -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Scope It
+                        Should -Invoke -CommandName 'Test-ArchiveExistsAtDestination' -Times 1 -Scope It
 
                         $result.Ensure | Should -Be 'Absent'
                         $result.Path | Should -Be $PathOfArchive
@@ -251,7 +256,9 @@ InModuleScope 'x7ZipArchive' {
 
         Context 'Get-TargetResourceの返すHashTableのEnsureプロパティがPresentの場合' {
 
-            Mock Get-TargetResource { return @{Ensure = 'Present' } }
+            BeforeEach {
+                Mock Get-TargetResource { return @{Ensure = 'Present' } }
+            }
 
             It 'Trueを返す' {
                 $testParam = @{
@@ -261,14 +268,15 @@ InModuleScope 'x7ZipArchive' {
                 }
 
                 Test-TargetResource @testParam | Should -Be $true
-                Assert-MockCalled -CommandName 'Get-TargetResource' -Exactly -Times 1 -Scope It
+                Should -Invoke -CommandName 'Get-TargetResource' -Exactly -Times 1 -Scope It
             }
         }
 
-
         Context 'Get-TargetResourceの返すHashTableのEnsureプロパティがAbsentの場合' {
 
-            Mock Get-TargetResource { return @{Ensure = 'Absent' } }
+            BeforeEach {
+                Mock Get-TargetResource { return @{Ensure = 'Absent' } }
+            }
 
             It 'Falseを返す' {
                 $testParam = @{
@@ -278,7 +286,7 @@ InModuleScope 'x7ZipArchive' {
                 }
 
                 Test-TargetResource @testParam | Should -Be $false
-                Assert-MockCalled -CommandName 'Get-TargetResource' -Exactly -Times 1 -Scope It
+                Should -Invoke -CommandName 'Get-TargetResource' -Exactly -Times 1 -Scope It
             }
         }
     }
@@ -288,17 +296,23 @@ InModuleScope 'x7ZipArchive' {
     #region Tests for Set-TargetResource
     Describe 'x7ZipArchive/Set-TargetResource' -Tag 'Unit' {
 
-        Mock Expand-7ZipArchive -MockWith { } -ParameterFilter { $IgnoreRoot }
-        Mock Expand-7ZipArchive -MockWith { } -ParameterFilter { $Force -eq $false }
-        Mock Expand-7ZipArchive -MockWith { }
-        Mock Test-ExtendedLengthPathSupport { return $true }
+        BeforeEach {
+            Mock Expand-7ZipArchive -MockWith { } -ParameterFilter { $IgnoreRoot }
+            Mock Expand-7ZipArchive -MockWith { } -ParameterFilter { $Force -eq $false }
+            Mock Expand-7ZipArchive -MockWith { }
+            Mock Test-ExtendedLengthPathSupport { return $true }
+        }
 
         BeforeAll {
-            Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
+            Copy-Item -Path $script:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
             $ErrorActionPreference = 'Stop'
         }
 
         Context 'エラーパターン' {
+
+            BeforeEach {
+                Mock Expand-7ZipArchive -MockWith { throw 'Exception' }
+            }
 
             It '指定されたアーカイブパスが存在しない場合は例外発生' {
                 $PathNotExist = 'TestDrive:\NotExist\Nothing.zip'
@@ -339,8 +353,6 @@ InModuleScope 'x7ZipArchive' {
                 { Set-TargetResource @SetParam } | Should -Throw 'Please specify the Validate parameter as true to use the Checksum parameter.'
             }
 
-            Mock Expand-7ZipArchive -MockWith { throw 'Exception' }
-
             It 'Expand-7ZipArchiveで例外が発生した場合は例外発生' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
                 $PathOfDestination = "TestDrive:\$script:TestGuid\Destination"
@@ -351,14 +363,16 @@ InModuleScope 'x7ZipArchive' {
                 }
 
                 { Set-TargetResource @SetParam } | Should -Throw 'Exception'
-                Assert-MockCalled -CommandName 'Expand-7ZipArchive' -Times 1 -Exactly -Scope It
+                Should -Invoke -CommandName 'Expand-7ZipArchive' -Times 1 -Exactly -Scope It
             }
         }
 
         Context 'アーカイブ展開' {
 
-            $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-            $PathOfDestination = "TestDrive:\$script:TestGuid\Destination"
+            BeforeAll {
+                $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $PathOfDestination = "TestDrive:\$script:TestGuid\Destination"
+            }
 
             It '展開先フォルダにアーカイブを展開する' {
                 $setParam = @{
@@ -367,7 +381,7 @@ InModuleScope 'x7ZipArchive' {
                 }
 
                 { Set-TargetResource @setParam } | Should -Not -Throw
-                Assert-MockCalled -CommandName 'Expand-7ZipArchive' -Times 1 -Scope It
+                Should -Invoke -CommandName 'Expand-7ZipArchive' -Times 1 -Scope It
             }
 
             It '展開先フォルダにアーカイブを展開する (IgnoreRoot指定あり)' {
@@ -378,7 +392,7 @@ InModuleScope 'x7ZipArchive' {
                 }
 
                 { Set-TargetResource @setParam } | Should -Not -Throw
-                Assert-MockCalled -CommandName 'Expand-7ZipArchive' -ParameterFilter { $IgnoreRoot } -Times 1 -Scope It
+                Should -Invoke -CommandName 'Expand-7ZipArchive' -ParameterFilter { $IgnoreRoot } -Times 1 -Scope It
             }
         }
     }
@@ -389,7 +403,7 @@ InModuleScope 'x7ZipArchive' {
     Describe 'x7ZipArchive/Get-7ZipArchive' -Tag 'Unit' {
 
         BeforeAll {
-            Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
+            Copy-Item -Path $script:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
             $ErrorActionPreference = 'Stop'
         }
 
@@ -479,13 +493,15 @@ InModuleScope 'x7ZipArchive' {
     Describe 'x7ZipArchive/Test-ArchiveExistsAtDestination' -Tag 'Unit' {
 
         BeforeAll {
-            Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
+            Copy-Item -Path $script:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
             $ErrorActionPreference = 'Stop'
         }
 
         Context 'エラーパターン' {
 
-            Mock Get-7ZipArchive -MockWith { throw '7ZipArchive Exception' }
+            BeforeEach {
+                Mock Get-7ZipArchive -MockWith { throw '7ZipArchive Exception' }
+            }
 
             It 'Get-7ZipArchiveで例外発生した場合は例外発生' {
                 $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'TestValid.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
@@ -494,7 +510,7 @@ InModuleScope 'x7ZipArchive' {
                 'ABC' | Out-File (Join-Path $Destination 'test.txt')
 
                 { Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination } | Should -Throw
-                Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
             }
         }
 
@@ -522,65 +538,64 @@ InModuleScope 'x7ZipArchive' {
 
         Context '展開先フォルダが空ではない場合' {
 
-            Mock Get-7ZipArchive -MockWith {
-                @{
-                    FileList = @(
-                        [PsCustomObject]@{
-                            ItemType = 'File'
-                            Modified = [Datetime]::Parse('2018-08-09 00:02:36')
-                            Size     = 3
-                            CRC      = '55B20A4B'
-                            Path     = '001.txt'
-                        }
-                    )
-                }
-            } -ParameterFilter { $Path -eq ((Join-Path "TestDrive:\$script:TestGuid" 'SingleFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)) }
+            BeforeEach {
+                Mock Get-7ZipArchive -MockWith {
+                    @{
+                        FileList = @(
+                            [PsCustomObject]@{
+                                ItemType = 'File'
+                                Modified = [Datetime]::Parse('2018-08-09 00:02:36')
+                                Size     = 3
+                                CRC      = '55B20A4B'
+                                Path     = '001.txt'
+                            }
+                        )
+                    }
+                } -ParameterFilter { $Path -eq ((Join-Path "TestDrive:\$script:TestGuid" 'SingleFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)) }
+                Mock Get-7ZipArchive -MockWith {
+                    @{
+                        FileList = @(
+                            [PsCustomObject]@{
+                                ItemType = 'File'
+                                Modified = [Datetime]::Parse('2018-08-09 00:02:36')
+                                Size     = 3
+                                CRC      = '55B20A4B'
+                                Path     = '001.txt'
+                            },
 
-            Mock Get-7ZipArchive -MockWith {
-                @{
-                    FileList = @(
-                        [PsCustomObject]@{
-                            ItemType = 'File'
-                            Modified = [Datetime]::Parse('2018-08-09 00:02:36')
-                            Size     = 3
-                            CRC      = '55B20A4B'
-                            Path     = '001.txt'
-                        },
+                            [PsCustomObject]@{
+                                ItemType = 'Folder'
+                                Modified = [Datetime]::Parse('2018-08-09 09:21:12')
+                                Size     = 0
+                                CRC      = ''
+                                Path     = 'Folder'
+                            },
 
-                        [PsCustomObject]@{
-                            ItemType = 'Folder'
-                            Modified = [Datetime]::Parse('2018-08-09 09:21:12')
-                            Size     = 0
-                            CRC      = ''
-                            Path     = 'Folder'
-                        },
-
-                        [PsCustomObject]@{
-                            ItemType = 'File'
-                            Modified = [Datetime]::Parse('2018-08-09 10:05:49')
-                            Size     = 10
-                            CRC      = 'E448FDFB'
-                            Path     = 'Folder\002.txt'
-                        }
-                    )
-                }
-            } -ParameterFilter { $Path -eq ((Join-Path "TestDrive:\$script:TestGuid" 'MultiFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)) }
-
-            Mock Get-7ZipArchive -MockWith {
-                @{
-                    FileList = @(
-                        [PsCustomObject]@{
-                            ItemType = 'File'
-                            Modified = [Datetime]::Parse('2018-08-09 00:02:36')
-                            Size     = 3
-                            CRC      = '55B20A4B'
-                            Path     = '\client\stage\Components\oracle.jdk\1.8.0.201.0\1.0.xx.fhaslaaaafwiflaalafskfnwowngwslsgns,xcnsofnwognwslnfldngwongwlkegndskgnekgnkesgnksngklsnfaga\DataFiles\Expanded\filegroup3\lib\missioncontrol\plugins\com.jrockit.mc.console.ui.notification_5.5.2.174165\com.jrockit.mc.console.ui.notification_contexts.xml'
-                        }
-                    )
-                }
-            } -ParameterFilter { $Path -eq ((Join-Path "TestDrive:\$script:TestGuid" 'TooLongPath.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)) }
-
-            Mock Get-7ZipArchive -MockWith { throw 'IgnoreRoot specified' } -ParameterFilter { $IgnoreRoot }
+                            [PsCustomObject]@{
+                                ItemType = 'File'
+                                Modified = [Datetime]::Parse('2018-08-09 10:05:49')
+                                Size     = 10
+                                CRC      = 'E448FDFB'
+                                Path     = 'Folder\002.txt'
+                            }
+                        )
+                    }
+                } -ParameterFilter { $Path -eq ((Join-Path "TestDrive:\$script:TestGuid" 'MultiFile.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)) }
+                Mock Get-7ZipArchive -MockWith {
+                    @{
+                        FileList = @(
+                            [PsCustomObject]@{
+                                ItemType = 'File'
+                                Modified = [Datetime]::Parse('2018-08-09 00:02:36')
+                                Size     = 3
+                                CRC      = '55B20A4B'
+                                Path     = '\client\stage\Components\oracle.jdk\1.8.0.201.0\1.0.xx.fhaslaaaafwiflaalafskfnwowngwslsgns,xcnsofnwognwslnfldngwongwlkegndskgnekgnkesgnksngklsnfaga\DataFiles\Expanded\filegroup3\lib\missioncontrol\plugins\com.jrockit.mc.console.ui.notification_5.5.2.174165\com.jrockit.mc.console.ui.notification_contexts.xml'
+                            }
+                        )
+                    }
+                } -ParameterFilter { $Path -eq ((Join-Path "TestDrive:\$script:TestGuid" 'TooLongPath.zip').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)) }
+                Mock Get-7ZipArchive -MockWith { throw 'IgnoreRoot specified' } -ParameterFilter { $IgnoreRoot }
+            }
 
             Context 'Validateなし' {
 
@@ -592,7 +607,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $false
                 }
@@ -606,7 +621,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $false
                 }
@@ -621,7 +636,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
                 }
@@ -639,7 +654,7 @@ InModuleScope 'x7ZipArchive' {
                     # Cleanup
                     [System.IO.Directory]::Delete(('\\?\' + $Destination), $true)
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
                 }
@@ -655,7 +670,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
                 }
@@ -671,7 +686,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Clean
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $false
                 }
@@ -686,7 +701,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Clean
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
                 }
@@ -703,7 +718,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'ModifiedDate'
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $false
                 }
@@ -717,7 +732,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'ModifiedDate'
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
                 }
@@ -736,7 +751,7 @@ InModuleScope 'x7ZipArchive' {
                     # Cleanup
                     [System.IO.Directory]::Delete(('\\?\' + $Destination), $true)
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
                 }
@@ -749,7 +764,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'Size'
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $false
                 }
@@ -762,7 +777,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'Size'
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
                 }
@@ -780,7 +795,7 @@ InModuleScope 'x7ZipArchive' {
                     # Cleanup
                     [System.IO.Directory]::Delete(('\\?\' + $Destination), $true)
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
                 }
@@ -793,7 +808,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'CRC'
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $false
                 }
@@ -806,19 +821,7 @@ InModuleScope 'x7ZipArchive' {
 
                     $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'CRC'
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
-                    $Result | Should -BeOfType 'bool'
-                    $Result | Should -Be $true
-                }
-
-                It 'ChecksumにCRCが指定されている場合で、アーカイブ内に空ファイルが含まれている場合でも正常にTrueを返す (Fixed issue in 2019-12-14)' {
-                    $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'HasEmptyFile.7z').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
-                    New-Item $Destination -ItemType Directory -Force >$null
-                    New-Item (Join-Path $Destination 'empty') -ItemType File -Force >$null
-                    'ABC' | Out-File (Join-Path $Destination 'text.txt') -NoNewline -Encoding (& { if ($PSVersionTable.PSVersion.Major -ge 6) { 'utf8Bom' }else { 'utf8' } })
-
-                    $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'CRC'
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
                 }
@@ -836,10 +839,24 @@ InModuleScope 'x7ZipArchive' {
                     # Cleanup
                     [System.IO.Directory]::Delete(('\\?\' + $Destination), $true)
 
-                    Assert-MockCalled -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
+                    Should -Invoke -CommandName 'Get-7ZipArchive' -Times 1 -Scope It
                     $Result | Should -BeOfType 'bool'
                     $Result | Should -Be $true
                 }
+            }
+        }
+
+        Context '空ファイルを含む実アーカイブの検証' {
+            It 'ChecksumにCRCが指定されている場合で、アーカイブ内に空ファイルが含まれている場合でも正常にTrueを返す (Fixed issue in 2019-12-14)' {
+                $PathOfArchive = (Join-Path "TestDrive:\$script:TestGuid" 'HasEmptyFile.7z').Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                $Destination = (Join-Path "TestDrive:\$script:TestGuid" ([IO.Path]::GetRandomFileName())).Replace('TestDrive:', (Get-PSDrive TestDrive).Root)
+                New-Item $Destination -ItemType Directory -Force >$null
+                New-Item (Join-Path $Destination 'empty') -ItemType File -Force >$null
+                'ABC' | Out-File (Join-Path $Destination 'text.txt') -NoNewline -Encoding (& { if ($PSVersionTable.PSVersion.Major -ge 6) { 'utf8Bom' }else { 'utf8' } })
+
+                $Result = Test-ArchiveExistsAtDestination -Path $PathOfArchive -Destination $Destination -Checksum 'CRC'
+                $Result | Should -BeOfType 'bool'
+                $Result | Should -Be $true
             }
         }
     }
@@ -850,7 +867,7 @@ InModuleScope 'x7ZipArchive' {
     Describe 'x7ZipArchive/Expand-7ZipArchive' -Tag 'Unit' {
 
         BeforeAll {
-            Copy-Item -Path $global:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
+            Copy-Item -Path $script:TestData -Destination "TestDrive:\$script:TestGuid" -Recurse -Force
             $ErrorActionPreference = 'Stop'
         }
 
@@ -898,7 +915,6 @@ InModuleScope 'x7ZipArchive' {
                 Test-Path -Path $Destination | Should -Be $false
             }
         }
-
 
         Context 'ZIPファイル展開' {
 
@@ -1033,7 +1049,7 @@ InModuleScope 'x7ZipArchive' {
             Mock Test-Path { $false } -ParameterFilter { $LiteralPath -eq 'something' }
 
             { Get-CRC16Hash -Path 'something' } | Should -Throw -ExceptionType ([System.IO.FileNotFoundException])
-            Assert-MockCalled -CommandName Test-Path -Times 1 -Scope It
+            Should -Invoke -CommandName Test-Path -Times 1 -Scope It
         }
 
         It 'ファイルのCRC16を返却' {
@@ -1057,7 +1073,7 @@ InModuleScope 'x7ZipArchive' {
             Mock Test-Path { $false } -ParameterFilter { $LiteralPath -eq 'something' }
 
             { Get-CRC32Hash -Path 'something' } | Should -Throw -ExceptionType ([System.IO.FileNotFoundException])
-            Assert-MockCalled -CommandName Test-Path -Times 1 -Scope It
+            Should -Invoke -CommandName Test-Path -Times 1 -Scope It
         }
 
         It 'ファイルのCRC32を返却' {
@@ -1072,8 +1088,10 @@ InModuleScope 'x7ZipArchive' {
     #region Tests for Mount-PSDriveWithCredential
     Describe 'x7ZipArchive/Mount-PSDriveWithCredential' -Tag 'Unit' {
 
-        Mock New-PSDrive { return @{Name = $Name } }
-        Mock UnMount-PSDrive { }
+        BeforeEach {
+            Mock New-PSDrive { return @{Name = $Name } }
+            Mock UnMount-PSDrive { }
+        }
 
         BeforeAll {
             $ErrorActionPreference = 'Stop'
@@ -1084,9 +1102,9 @@ InModuleScope 'x7ZipArchive' {
 
             $Ret = Mount-PSDriveWithCredential -Root 'something' -Credential $script:TestCredential
             $Ret.Name | Should -Match '([A-Fa-f0-9]{8})\-([A-Fa-f0-9]{4})\-([A-Fa-f0-9]{4})\-([A-Fa-f0-9]{4})\-([A-Fa-f0-9]{12})'
-            Assert-MockCalled -CommandName New-PSDrive -Times 1 -Scope It -Exactly
-            Assert-MockCalled -CommandName Test-Path -Times 1 -Scope It -Exactly
-            Assert-MockCalled -CommandName UnMount-PSDrive -Times 0 -Scope It -Exactly
+            Should -Invoke -CommandName New-PSDrive -Times 1 -Scope It -Exactly
+            Should -Invoke -CommandName Test-Path -Times 1 -Scope It -Exactly
+            Should -Invoke -CommandName UnMount-PSDrive -Times 0 -Scope It -Exactly
         }
 
         It 'Nameが指定されている場合、その名前でPSDriveをマウントする' {
@@ -1094,18 +1112,18 @@ InModuleScope 'x7ZipArchive' {
 
             $Ret = Mount-PSDriveWithCredential -Root 'something' -Name 'drivename' -Credential $script:TestCredential
             $Ret.Name | Should -Be 'drivename'
-            Assert-MockCalled -CommandName New-PSDrive -Times 1 -Scope It -Exactly
-            Assert-MockCalled -CommandName Test-Path -Times 1 -Scope It -Exactly
-            Assert-MockCalled -CommandName UnMount-PSDrive -Times 0 -Scope It -Exactly
+            Should -Invoke -CommandName New-PSDrive -Times 1 -Scope It -Exactly
+            Should -Invoke -CommandName Test-Path -Times 1 -Scope It -Exactly
+            Should -Invoke -CommandName UnMount-PSDrive -Times 0 -Scope It -Exactly
         }
 
         It '処理中に例外が発生した場合、UnMount-PSDriveを呼び出してから終了' {
             Mock Test-Path { throw 'Exception' }
 
             { Mount-PSDriveWithCredential -Root 'something' -Credential $script:TestCredential } | Should -Throw 'Exception'
-            Assert-MockCalled -CommandName New-PSDrive -Times 1 -Scope It -Exactly
-            Assert-MockCalled -CommandName Test-Path -Times 1 -Scope It -Exactly
-            Assert-MockCalled -CommandName UnMount-PSDrive -Times 1 -Scope It -Exactly
+            Should -Invoke -CommandName New-PSDrive -Times 1 -Scope It -Exactly
+            Should -Invoke -CommandName Test-Path -Times 1 -Scope It -Exactly
+            Should -Invoke -CommandName UnMount-PSDrive -Times 1 -Scope It -Exactly
         }
     }
     #endregion Tests for Mount-PSDriveWithCredential
@@ -1113,7 +1131,9 @@ InModuleScope 'x7ZipArchive' {
     #region Tests for UnMount-PSDrive
     Describe 'x7ZipArchive/UnMount-PSDrive' -Tag 'Unit' {
 
-        Mock Remove-PSDrive { }
+        BeforeEach {
+            Mock Remove-PSDrive { }
+        }
 
         BeforeAll {
             $ErrorActionPreference = 'Stop'
@@ -1121,17 +1141,17 @@ InModuleScope 'x7ZipArchive' {
 
         It 'Nameが$nullの場合、何もせず終了' {
             { UnMount-PSDrive -Name $null } | Should -Not -Throw
-            Assert-MockCalled -CommandName Remove-PSDrive -Times 0 -Scope It -Exactly
+            Should -Invoke -CommandName Remove-PSDrive -Times 0 -Scope It -Exactly
         }
 
         It 'Nameが空文字列の場合、何もせず終了' {
             { UnMount-PSDrive -Name ([string]::Empty) } | Should -Not -Throw
-            Assert-MockCalled -CommandName Remove-PSDrive -Times 0 -Scope It -Exactly
+            Should -Invoke -CommandName Remove-PSDrive -Times 0 -Scope It -Exactly
         }
 
         It 'Nameが指定されている場合、Remove-PSDriveを実行' {
             { UnMount-PSDrive -Name 'foo' } | Should -Not -Throw
-            Assert-MockCalled -CommandName Remove-PSDrive -Times 1 -Scope It -Exactly
+            Should -Invoke -CommandName Remove-PSDrive -Times 1 -Scope It -Exactly
         }
     }
     #endregion Tests for UnMount-PSDrive
@@ -1152,7 +1172,10 @@ InModuleScope 'x7ZipArchive' {
         }
 
         Context 'PowerShell 6 and later' {
-            Mock Test-ExtendedLengthPathSupport { return $true }
+
+            BeforeEach {
+                Mock Test-ExtendedLengthPathSupport { return $true }
+            }
 
             It 'Pathが絶対パスの場合はそのまま返却' {
                 if ($PSVersionTable.PSVersion.Major -lt 6) { Set-ItResult -Skipped }
@@ -1160,7 +1183,7 @@ InModuleScope 'x7ZipArchive' {
                 $TestPath = "C:\foo\$LongString\baz"
                 $ExpectResult = $TestPath
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 0 -Scope It -Exactly
+                Should -Invoke -CommandName Test-ExtendedLengthPathSupport -Times 0 -Scope It -Exactly
             }
 
             It 'Pathが相対パスの場合は絶対パスに変換して返却' {
@@ -1168,7 +1191,7 @@ InModuleScope 'x7ZipArchive' {
                 $TestPath = '.\foo\bar\baz'
                 $ExpectResult = 'C:\Users\Public\foo\bar\baz'
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 0 -Scope It -Exactly
+                Should -Invoke -CommandName Test-ExtendedLengthPathSupport -Times 0 -Scope It -Exactly
             }
 
             It 'PathがUNCパスの場合はそのまま返却' {
@@ -1177,7 +1200,7 @@ InModuleScope 'x7ZipArchive' {
                 $TestPath = "\\server\foo\$LongString\baz"
                 $ExpectResult = $TestPath
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 0 -Scope It -Exactly
+                Should -Invoke -CommandName Test-ExtendedLengthPathSupport -Times 0 -Scope It -Exactly
             }
 
             It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却' {
@@ -1185,12 +1208,15 @@ InModuleScope 'x7ZipArchive' {
                 $TestPath = '\\?\C:\foo\bar\baz'
                 $ExpectResult = $TestPath
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 0 -Scope It -Exactly
+                Should -Invoke -CommandName Test-ExtendedLengthPathSupport -Times 0 -Scope It -Exactly
             }
         }
 
         Context 'When the system supports extended-length path' {
-            Mock Test-ExtendedLengthPathSupport { return $true }
+
+            BeforeEach {
+                Mock Test-ExtendedLengthPathSupport { return $true }
+            }
 
             It 'Pathが絶対パスの場合は\\?\プリフィックスを付与して返却' {
                 if ($PSVersionTable.PSVersion.Major -ge 6) { Set-ItResult -Skipped }
@@ -1198,7 +1224,7 @@ InModuleScope 'x7ZipArchive' {
                 $TestPath = "C:\foo\$LongString\baz"
                 $ExpectResult = '\\?\' + $TestPath
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+                Should -Invoke -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
             }
 
             It 'Pathが相対パスの場合は絶対パスに変換&\\?\プリフィックスを付与して返却' {
@@ -1206,7 +1232,7 @@ InModuleScope 'x7ZipArchive' {
                 $TestPath = '.\foo\bar\baz'
                 $ExpectResult = '\\?\C:\Users\Public\foo\bar\baz'
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+                Should -Invoke -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
             }
 
             It 'PathがUNCパスの場合は\\?\UNC\プリフィックスを付与して返却' {
@@ -1215,7 +1241,7 @@ InModuleScope 'x7ZipArchive' {
                 $TestPath = "\\server\foo\$LongString\baz"
                 $ExpectResult = "\\?\UNC\server\foo\$LongString\baz"
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+                Should -Invoke -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
             }
 
             It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却' {
@@ -1223,19 +1249,22 @@ InModuleScope 'x7ZipArchive' {
                 $TestPath = '\\?\C:\foo\bar\baz'
                 $ExpectResult = $TestPath
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+                Should -Invoke -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
             }
         }
 
         Context 'When the system does NOT supports extended-length path' {
-            Mock Test-ExtendedLengthPathSupport { return $false }
+
+            BeforeEach {
+                Mock Test-ExtendedLengthPathSupport { return $false }
+            }
 
             It 'Pathが絶対パスの場合はそのまま返却' {
                 if ($PSVersionTable.PSVersion.Major -ge 6) { Set-ItResult -Skipped }
                 $TestPath = 'C:\foo\bar\baz'
                 $ExpectResult = $TestPath
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+                Should -Invoke -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
             }
 
             It 'Pathが相対パスの場合は絶対パスに変換して返却' {
@@ -1243,7 +1272,7 @@ InModuleScope 'x7ZipArchive' {
                 $TestPath = '.\foo\bar\baz'
                 $ExpectResult = 'C:\Users\Public\foo\bar\baz'
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+                Should -Invoke -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
             }
 
             It 'Pathに\\?\プリフィックスが付与されている場合はそのまま返却' {
@@ -1251,7 +1280,7 @@ InModuleScope 'x7ZipArchive' {
                 $TestPath = '\\?\C:\foo\bar\baz'
                 $ExpectResult = $TestPath
                 Convert-RelativePathToAbsolute -Path $TestPath | Should -Be $ExpectResult
-                Assert-MockCalled -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
+                Should -Invoke -CommandName Test-ExtendedLengthPathSupport -Times 1 -Scope It -Exactly
             }
         }
     }
