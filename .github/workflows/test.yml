@@ -10,10 +10,7 @@ jobs:
         shell: powershell
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Pester
-        run: Install-Module Pester -MaximumVersion 4.10.1 -Force -AllowClobber -Scope CurrentUser -SkipPublisherCheck
+      - uses: actions/checkout@v7
 
       - name: Configure WinRM
         run: winrm quickconfig -quiet
@@ -36,10 +33,7 @@ jobs:
         shell: pwsh
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Pester
-        run: Install-Module Pester -MaximumVersion 4.10.1 -Force -AllowClobber -Scope CurrentUser -SkipPublisherCheck
+      - uses: actions/checkout@v7
 
       - name: Install PSDesiredStateConfiguration
         run: Install-Module PSDesiredStateConfiguration -Repository PSGallery -MaximumVersion 2.99 -Force -AllowClobber
